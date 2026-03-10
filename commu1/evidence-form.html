@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ใบเบิกพัสดุ (แบบ ทอ.๓๕)</title>
+    <!-- ใช้ฟอนต์ Sarabun เพื่อความสวยงามและเป็นทางการ -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            font-size: 10pt;
+        }
+
+        .page {
+            background-color: white;
+            width: 210mm;
+            /* A4 width */
+            min-height: 297mm;
+            /* A4 height */
+            padding: 20mm;
+            /* A4 margins */
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+            box-sizing: border-box;
+            color: black;
+        }
+
+        .print-btn-container {
+            margin-bottom: 20px;
+        }
+
+        .btn-print {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+
+        .btn-print:hover {
+            background-color: #0056b3;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .red-text {
+            color: red;
+            font-weight: normal;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .form-table td,
+        .form-table th {
+            border: 1.5px solid black;
+            padding: 2px 4px;
+            vertical-align: middle;
+            line-height: 1.2;
+        }
+
+        table.inner-table {
+            width: 100%;
+            height: 100%;
+            border-collapse: collapse;
+        }
+
+        table.inner-table td {
+            border: none;
+            padding: 5px 8px;
+        }
+
+        .p-0 {
+            padding: 0 !important;
+        }
+
+        .w-50 {
+            width: 50%;
+        }
+
+        .w-100 {
+            width: 100%;
+        }
+
+        .h-100 {
+            height: 100%;
+        }
+
+        .border-0 {
+            border: none !important;
+        }
+
+        .border-right {
+            border-right: 1.5px solid black !important;
+        }
+
+        .border-bottom {
+            border-bottom: 1.5px solid black !important;
+        }
+
+        .border-left {
+            border-left: 1.5px solid black !important;
+        }
+
+        .border-top {
+            border-top: 1.5px solid black !important;
+        }
+
+        .valign-top {
+            vertical-align: top !important;
+        }
+
+        @page {
+            size: A4 portrait;
+            margin: 5mm;
+            /* Minimal margins for printing */
+        }
+
+        @media print {
+            body {
+                background-color: transparent !important;
+                padding: 0;
+                margin: 0;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .page {
+                box-shadow: none;
+                margin: 0;
+                padding: 0;
+                /* Remove padding since @page margin is used */
+                width: 100%;
+                /* We don't force a strict min-height for printing so it relies on the @page size */
+                min-height: auto;
+            }
+
+            .red-text {
+                -webkit-print-color-adjust: exact;
+                color: black !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="print-btn-container no-print">
+        <button class="btn-print" onclick="window.print()">🖨️ พิมพ์เอกสาร</button>
+    </div>
+
+    <div class="page" id="printable-area">
+        <div class="text-right" style="margin-bottom: 4px; font-weight: bold;">แบบ ทอ.๓๕</div>
+
+        <!-- TOP TABLE -->
+        <table class="form-table" style="border-bottom: none;">
+            <colgroup>
+                <col style="width: 5%;"> <!-- 1: ลำดับ -->
+                <col style="width: 15%;"> <!-- 2: หมายเลข -->
+                <col style="width: 35%;"> <!-- 3: ชื่อพัสดุ -->
+                <col style="width: 6%;"> <!-- 4: หน่วยนับ -->
+                <col style="width: 6%;"> <!-- 5: จำนวน -->
+                <col style="width: 11%;"> <!-- 6: หน่วยละ -->
+                <col style="width: 11%;"> <!-- 7: ราคารวม -->
+                <col style="width: 11%;"> <!-- 8: จำนวนรับ -->
+            </colgroup>
+
+            <tr>
+                <td colspan="5" class="text-center">ใบเบิกพัสดุ</td>
+                <td colspan="3">วัน-เดือน-ปี &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span
+                        class="red-text">{วันที่ยืม}</span></td>
+            </tr>
+            <tr>
+                <td class="text-center">จาก</td>
+                <td colspan="4">มว.ส.ร้อย.สนน.พัน.อย.บน.๔๖</td>
+                <td colspan="3">ที่หนังสือของผู้ส่งคืน</td>
+            </tr>
+            <tr>
+                <td class="text-center">ถึง</td>
+                <td colspan="4" class="red-text">{แผนก / ตำแหน่ง}</td>
+                <td>ประเภทพัสดุ</td>
+                <td colspan="2">บัญชีเลขที่</td>
+            </tr>
+            <tr>
+                <td colspan="5">หลักฐานการเบิกพัสดุ &nbsp;&nbsp;&nbsp; ใช้ราชการที่ มว.ส.ร้อย.สนน.พัน.อย.บน.๔๖</td>
+                <td colspan="3">เลขงาน</td>
+            </tr>
+
+            <!-- Header area for items -->
+            <tr>
+                <td rowspan="2" class="text-center">ลำดับ</td>
+                <td rowspan="2" class="text-center">หมายเลข</td>
+                <td rowspan="2" class="text-center">ชื่อพัสดุ</td>
+                <td rowspan="2" class="text-center">หน่วย<br>นับ</td>
+                <td rowspan="2" class="text-center">จำนวน</td>
+                <td colspan="2" class="text-center">ราคา</td>
+                <td rowspan="2" class="text-center">จำนวน<br>รับ</td>
+            </tr>
+            <tr>
+                <td class="text-center">หน่วยละ</td>
+                <td class="text-center">ราคารวม</td>
+            </tr>
+
+            <!-- ITEM ROW -->
+            <tr>
+                <td class="text-center valign-top" style="padding-top: 5px; border-bottom: none;">1</td>
+                <td class="valign-top red-text" style="padding-top: 5px; padding-left: 5px; border-bottom: none;">
+                    {หมายเลขวิทยุ}</td>
+                <td class="valign-top p-0" style="position: relative; border-bottom: none;">
+
+                    <div style="padding: 5px 5px 5px 10px;">
+                        <span class="red-text">{รุ่นวิทยุ}</span><br>
+                        แบตเตอรี่ <span class="red-text">{รุ่นวิทยุ}</span><br>
+                        แท่นชาร์จ<br><br>
+                        <div class="red-text" style="margin-left: 20px;">{ชื่อ-นามสกุล} &nbsp;&nbsp;&nbsp;&nbsp; {เบอร์}
+                        </div>
+                    </div>
+
+                    <!-- SVG Area -->
+                    <div style="position: relative; height: 90px; width: 100%;">
+                        <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+                            <!-- Diagonal line simulating Z strike-through -->
+                            <line x1="10" y1="95%" x2="95%" y2="5%" stroke="black" stroke-width="1.2" />
+                        </svg>
+                    </div>
+
+                    <div class="text-center"
+                        style="position: relative; background: #fff; display: block; padding-bottom: 2px;">
+                        <span style="letter-spacing: -2px;">-----------------------------------</span>
+                        &nbsp;จำนวน &nbsp;๑&nbsp; รายการ&nbsp;
+                        <span style="letter-spacing: -2px;">-----------------------------------</span>
+                    </div>
+
+                    <div style="padding: 5px 5px; font-size: 12pt; line-height: 1.2; margin-top: 5px;">
+                        พัสดุที่รับไปถ้ามีการชำรุดเสียหายอันมิได้เกิดจากการใช้งานในสภาพปกติ<br>
+                        จะต้องรับรองชดใช้ค่าพัสดุนั้น ตามที่ทางราชการเรียกชดใช้ทุกประการ
+                    </div>
+                </td>
+                <td class="text-center valign-top" style="padding-top: 5px; border-bottom: none;">EA</td>
+                <td class="text-center valign-top red-text" style="padding-top: 5px; border-bottom: none;">{จำนวน}</td>
+                <td style="border-bottom: none;"></td>
+                <td style="border-bottom: none;"></td>
+                <td style="border-bottom: none;"></td>
+            </tr>
+        </table>
+
+        <!-- BOTTOM DATA TABLE PART 1 -->
+        <table class="form-table" style="border-top: none; border-bottom: none;">
+            <colgroup>
+                <col style="width: 33.33%;">
+                <col style="width: 33.33%;">
+                <col style="width: 33.34%;">
+            </colgroup>
+            <tr>
+                <td class="text-center" style="border-top: none;">สำหรับคลังพัสดุย่อยกา ( / )</td>
+                <td class="text-center" style="border-top: none;">สำหรับคลังพัสดุใหญ่กา ( / )</td>
+                <td class="text-center" style="border-top: none;">สำหรับโรงงานกา ( / )</td>
+            </tr>
+            <tr>
+                <td class="text-center">ใช้ราชการไม่ได้</td>
+                <td class="p-0">
+                    <table class="inner-table">
+                        <tr>
+                            <td class="w-50 border-right" style="padding-left: 15px;">พัสดุดี</td>
+                            <td class="w-50" style="padding-left: 15px;">จำหน่าย</td>
+                        </tr>
+                    </table>
+                </td>
+                <td style="padding-left: 15px; line-height: 1.8;">
+                    ใช้ราชการได้<br>
+                    ซ่อมได้
+                </td>
+            </tr>
+            <tr>
+                <td class="text-center">ใช้ราชการได้</td>
+                <td class="p-0">
+                    <table class="inner-table">
+                        <tr>
+                            <td class="w-50 border-right" style="padding-left: 15px;">พัสดุซ่อมได้</td>
+                            <td class="w-50"></td>
+                        </tr>
+                    </table>
+                </td>
+                <td style="padding-left: 15px; line-height: 1.8;">
+                    แยกชิ้นเพื่อใช้เป็นอะไหล่<br>
+                    ซ่อมเสร็จแล้ว
+                </td>
+            </tr>
+            <tr>
+                <td class="text-center">เกินอัตรา</td>
+                <td class="text-center">
+                    ผู้ลงบัญชี &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; วัน
+                    - เดือน - ปี
+                </td>
+                <td style="padding-left: 15px; line-height: 1.8;">
+                    ซ่อมที่โรงงานไม่ได้<br>
+                    จำหน่าย
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" class="text-center">
+                    ได้รับของตามจำนวนในช่อง " จำนวนรับ " ไว้ถูกต้องแล้ว
+                </td>
+                <td></td>
+            </tr>
+        </table>
+
+        <!-- BOTTOM DATA TABLE PART 2 (Signatures) -->
+        <table class="w-100"
+            style="border-collapse: collapse; border-bottom: 1.5px solid black; border-left: 1.5px solid black; border-right: 1.5px solid black; table-layout: fixed;">
+            <colgroup>
+                <col style="width: 66.66%;">
+                <col style="width: 33.34%;">
+            </colgroup>
+            <tr>
+                <td
+                    style="padding: 0; border-right: 1.5px solid black; border-top: 1.5px solid black; vertical-align: top;">
+                    <table class="w-100 h-100" style="border-collapse: collapse; table-layout: fixed;">
+                        <colgroup>
+                            <col style="width: 40%;">
+                            <col style="width: 60%;">
+                        </colgroup>
+                        <tr>
+                            <td
+                                style="border-bottom: 1.5px solid black; border-right: 1.5px solid black; padding: 4px 8px;">
+                                วัน - เดือน - ปี
+                            </td>
+                            <td style="border-bottom: 1.5px solid black; padding: 4px 8px;">
+                                เจ้าหน้าที่ผู้รับ
+                            </td>
+                        </tr>
+                        <tr>
+                            <td
+                                style="border-bottom: 1.5px solid black; border-right: 1.5px solid black; padding: 4px 8px;">
+                                ผู้เบิกพัสดุ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ยศ - ชื่อ
+                            </td>
+                            <td style="border-bottom: 1.5px solid black; padding: 4px 8px; text-align: center;">
+                                ตำแหน่ง
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="border-right: 1.5px solid black; padding: 5px 8px;">&nbsp;</td>
+                            <td style="padding: 5px 8px; text-align: center;" class="red-text">
+                                {ตำแหน่ง}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td style="padding: 0; vertical-align: top; border-top: 1.5px solid black;">
+                    <table class="w-100 h-100" style="border-collapse: collapse; table-layout: fixed;">
+                        <tr>
+                            <td style="border-bottom: 1.5px solid black; padding: 4px 8px;">
+                                ได้เบิกของอย่างเดียวกันนี้แล้วตามใบเบิกที่
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="border-bottom: 1.5px solid black; padding: 10px 8px;">&nbsp;</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px 8px; text-align: center;">
+                                ที่หนังสือของคลังใหญ่
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const recordStr = localStorage.getItem('print_record');
+            if (recordStr) {
+                try {
+                    const r = JSON.parse(recordStr);
+
+                    // Format Date to Thai standard (e.g., 10 มี.ค. 2568)
+                    const dateObj = new Date(r.borrowTime);
+                    const months = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+                    const borrowDate = `${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear() + 543}`;
+
+                    const replacements = {
+                        '{วันที่ยืม}': borrowDate,
+                        '{แผนก / ตำแหน่ง}': r.dept || '',
+                        '{หมายเลขวิทยุ}': r.radioSN || r.radioId || '',
+                        '{รุ่นวิทยุ}': r.radioModel || 'Hytera PD-408',
+                        '{ชื่อ-นามสกุล}': r.name || '',
+                        '{เบอร์}': r.phone || '',
+                        '{จำนวน}': '1',
+                        '{ตำแหน่ง}': r.dept || ''
+                    };
+
+                    const container = document.getElementById('printable-area');
+                    let html = container.innerHTML;
+                    for (const [key, val] of Object.entries(replacements)) {
+                        /* Replace all instances using global regex. 
+                           Using split/join is safer than regex to avoid escaping issues with brackets */
+                        html = html.split(key).join(val);
+                    }
+                    container.innerHTML = html;
+
+                    // Automatically remove it so normal accesses don't get leftovers
+                    localStorage.removeItem('print_record');
+
+                    // Trigger print after a short delay to ensure render is complete
+                    setTimeout(() => {
+                        window.print();
+                    }, 500);
+
+                } catch (e) {
+                    console.error("Failed to parse print record:", e);
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "radiotrack",
+  "version": "2.1.0",
+  "description": "ระบบยืม-คืน วิทยุสื่อสาร",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

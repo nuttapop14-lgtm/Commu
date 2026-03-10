@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบยืม-คืน วิทยุสื่อสาร</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+  <link rel="icon" type="image/png" href="images/TACCOM46.PNG">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+  <!-- LOGIN PAGE -->
+  <div class="login-page" id="login-page">
+    <div class="login-box">
+      <div class="login-logo">
+        <div class="icon">
+          <img src="images/TACCOM46.PNG" alt="TACCOM46 Logo" style="width: 80px; height: 80px; object-fit: contain;">
+        </div>
+        <h2>RadioTrack</h2>
+        <p>ระบบยืม-คืน วิทยุสื่อสาร</p>
+      </div>
+      <form class="login-form" onsubmit="return handleLogin(event)">
+        <div class="login-error" id="login-error">
+          ❌ อีเมลไม่ได้รับอนุญาต กรุณาติดต่อผู้ดูแล
+        </div>
+        <div class="form-group">
+          <label>📧 อีเมลผู้ใช้</label>
+          <input type="email" id="login-email" placeholder="example@company.com" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:8px">
+          🔐 เข้าสู่ระบบ
+        </button>
+      </form>
+      <div style="text-align:center;margin-top:20px;font-size:12px;color:var(--muted)">
+        อนุญาตเฉพาะอีเมลที่ลงทะเบียนไว้เท่านั้น
+      </div>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <img src="images/TACCOM46.PNG" alt="TACCOM46 Logo"
+          style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px;">
+      </div>
+      <div class="logo-text">
+        <h1>RadioTrack</h1>
+        <p>ระบบยืม-คืน วิทยุสื่อสาร</p>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill">
+        <div class="dot dot-green"></div>
+        <span>ว่าง: <strong id="hdr-avail">84</strong></span>
+      </div>
+      <div class="stat-pill">
+        <div class="dot dot-yellow"></div>
+        <span>ยืม: <strong id="hdr-borrowed">0</strong></span>
+      </div>
+      <div class="stat-pill">
+        <div class="dot dot-red"></div>
+        <span>คงเหลือ: <strong id="hdr-remain">84</strong></span>
+      </div>
+      <span id="clock" class="header-clock">--:--:--</span>
+      <div class="user-info" id="user-info" style="display:none">
+        <div class="user-avatar" id="user-avatar">U</div>
+        <span id="user-email">user@email.com</span>
+        <button class="btn-logout" onclick="handleLogout()">ออกจากระบบ</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- LEFT PANEL -->
+    <div class="panel-left">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('borrow')">📤 ยืมวิทยุ</button>
+        <button class="tab" onclick="switchTab('return')">📥 คืนวิทยุ</button>
+      </div>
+
+      <!-- BORROW TAB -->
+      <div id="tab-borrow">
+        <div class="section-title">สแกน QR Code วิทยุ</div>
+
+        <div class="qr-box" id="qr-box" onclick="startQR()">
+          <div class="qr-placeholder" id="qr-placeholder">
+            <div class="icon">📷</div>
+            <p>แตะเพื่อเปิดกล้องสแกน QR</p>
+            <p style="font-size:11px;margin-top:4px;color:var(--border)">หรือเลือกวิทยุด้านล่างโดยตรง</p>
+          </div>
+          <div id="qr-reader"></div>
+        </div>
+        <div class="qr-result" id="qr-result">✓ สแกนได้: <span id="qr-val"></span></div>
+
+        <!-- RADIO PREVIEW -->
+        <div id="radio-preview-card"
+          style="display:none; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.05); animation:slideUp 0.3s ease;">
+          <div style="display:flex; gap:16px; align-items:center;">
+            <div
+              style="width:80px; height:80px; background:var(--surface2); border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px solid var(--border);">
+              <img id="preview-radio-img" src="" alt="Radio" style="width:100%; height:100%; object-fit:contain;">
+            </div>
+            <div style="flex:1;">
+              <div
+                style="font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">
+                วิทยุที่เลือก</div>
+              <div id="preview-radio-id"
+                style="font-size:24px; font-weight:800; color:var(--accent); font-family:'IBM Plex Mono',monospace; line-height:1.2;">
+                --</div>
+              <div id="preview-radio-info" style="font-size:13px; color:var(--text); font-weight:500; margin-top:2px;">
+                --</div>
+            </div>
+            <button class="btn-close" onclick="app.clearSelectedRadio()" style="align-self:flex-start;">✕</button>
+          </div>
+        </div>
+
+
+        <div class="form-group">
+          <label>📦 จำนวนเครื่องที่ต้องการยืม</label>
+          <input type="number" id="borrow-qty" min="1" max="84" value="1" oninput="app.handleQuantityChange(this.value)"
+            style="font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--accent);">
+        </div>
+
+        <div id="radio-inputs-container">
+          <div class="form-group">
+            <label>ค้นหาหมายเลขวิทยุเครื่องที่ 1</label>
+            <div class="radio-input-group">
+              <input type="text" class="radio-search-input" placeholder="พิมพ์ค้นหาหมายเลข..." list="radio-datalist"
+                style="font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--accent);"
+                oninput="app.updateSelectedRadios()">
+              <button class="clear-input-btn"
+                onclick="this.previousElementSibling.value=''; app.updateSelectedRadios()">✕</button>
+            </div>
+          </div>
+        </div>
+        <datalist id="radio-datalist"></datalist>
+
+        <!-- Keep hidden for backward compatibility in some logic if needed -->
+        <input type="hidden" id="sel-radio">
+
+        <div class="divider"></div>
+        <div class="section-title">ข้อมูลผู้ยืม</div>
+
+        <div class="form-group">
+          <label>ชื่อ-นามสกุล *</label>
+          <input type="text" id="borrower-name" placeholder="ชื่อ นามสกุล" list="user-datalist"
+            oninput="app.handleUserSelect(this.value)">
+          <datalist id="user-datalist"></datalist>
+        </div>
+        <div class="form-group">
+          <label>เบอร์โทรศัพท์ *</label>
+          <input type="tel" id="borrower-phone" placeholder="0XX-XXX-XXXX">
+        </div>
+        <div class="form-group">
+          <label>แผนก / ตำแหน่ง</label>
+          <input type="text" id="borrower-dept" placeholder="เช่น ฝ่ายบริการ">
+        </div>
+
+        <div class="divider"></div>
+        <div class="section-title">ถ่ายภาพหลักฐาน</div>
+
+        <div class="photo-area" id="photo-area">
+          <div class="photo-placeholder" id="photo-placeholder" onclick="app.startCamera()">
+            <div class="icon">📸</div>
+            <p>แตะเพื่อถ่ายภาพผู้ยืม</p>
+          </div>
+          <video id="cam-stream" autoplay playsinline onclick="app.snapPhoto()"></video>
+          <img id="photo-preview" src="" alt="" onclick="document.getElementById('photo-upload').click()">
+        </div>
+        <canvas id="photo-canvas"></canvas>
+        <input type="file" id="photo-upload" accept="image/*" style="display:none"
+          onchange="app.handlePhotoUpload(this)">
+        <div style="display:flex;gap:6px;margin-bottom:14px;">
+          <button class="btn btn-secondary btn-sm" id="btn-camera" onclick="app.startCamera()" style="flex:1">📸
+            เปิดกล้อง</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('photo-upload').click()"
+            style="flex:1">📁 อัปโหลดรูป</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:14px;display:none" id="cam-btns">
+          <button class="btn btn-secondary btn-sm" id="btn-snap" onclick="app.snapPhoto()" style="flex:1">📸
+            ถ่ายรูป</button>
+          <button class="btn btn-secondary btn-sm" id="btn-retake" onclick="app.retakePhoto()" style="flex:1">🔄
+            ถ่ายใหม่</button>
+        </div>
+
+        <button class="btn btn-primary" onclick="submitBorrow()">✅ บันทึกการยืม</button>
+      </div>
+
+      <!-- RETURN TAB -->
+      <div id="tab-return" style="display:none">
+        <div class="section-title">ค้นหารายการยืม</div>
+        <div class="form-group">
+          <input type="text" id="return-search" placeholder="🔍 ชื่อ, เบอร์ หรือหมายเลขวิทยุ" oninput="filterReturn()">
+        </div>
+        <div id="return-list"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="panel-right">
+      <div class="summary-cards">
+        <div class="summary-card card-available">
+          <div class="num num-green" id="sum-avail">84</div>
+          <div class="label">📻 วิทยุว่าง</div>
+        </div>
+        <div class="summary-card card-borrowed">
+          <div class="num num-red" id="sum-borrowed">0</div>
+          <div class="label">📤 ถูกยืม</div>
+        </div>
+        <div class="summary-card card-total">
+          <div class="num num-blue">84</div>
+          <div class="label">📦 ทั้งหมด</div>
+        </div>
+      </div>
+
+      <div class="records-header">
+        <div class="section-title" style="margin:0">รายการยืม-คืน</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="search-box" type="text" placeholder="🔍 ค้นหา..." id="table-search" oninput="renderTable()">
+          <button class="btn btn-secondary btn-sm" onclick="exportCSV()" style="white-space:nowrap">📊 Export</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>วิทยุ</th>
+              <th>Serial Number</th>
+              <th>ชื่อผู้ยืม</th>
+              <th>เบอร์</th>
+              <th>แผนก</th>
+              <th>เวลายืม</th>
+              <th>เวลาคืน</th>
+              <th>รูปยืม</th>
+              <th>รูปคืน</th>
+              <th>สถานะ</th>
+              <th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="records-body"></tbody>
+        </table>
+        <div id="empty-state" style="text-align:center;padding:40px;color:var(--muted);font-size:14px;">
+          📭 ยังไม่มีรายการยืม
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRINT ZONE -->
+  <div id="print-zone">
+    <div class="print-doc" id="print-doc"></div>
+  </div>
+
+  <!-- PHOTO MODAL -->
+  <div class="modal-overlay" id="photo-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📸 รูปหลักฐาน</h3>
+        <button class="btn-close" onclick="closeModal('photo-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <img id="photo-modal-img" src="" alt="หลักฐาน">
+      </div>
+    </div>
+  </div>
+
+  <!-- RETURN MODAL WITH PHOTO -->
+  <div class="modal-overlay" id="return-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📥 คืนวิทยุ - ถ่ายภาพหลักฐาน</h3>
+        <button class="btn-close" onclick="closeModal('return-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="return-info" style="margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;">
+          <!-- Return info will be inserted here -->
+        </div>
+
+        <div class="photo-area" id="return-photo-area">
+          <div class="photo-placeholder" id="return-photo-placeholder" onclick="app.startReturnCamera()">
+            <div class="icon">📸</div>
+            <p>แตะเพื่อถ่ายภาพผู้คืน</p>
+          </div>
+          <video id="return-cam-stream" autoplay playsinline style="width:100%;display:none;"
+            onclick="app.snapReturnPhoto()"></video>
+          <img id="return-photo-preview" src="" alt="" style="width:100%;display:none;"
+            onclick="document.getElementById('return-photo-upload').click()">
+        </div>
+        <canvas id="return-photo-canvas" style="display:none;"></canvas>
+        <input type="file" id="return-photo-upload" accept="image/*" style="display:none"
+          onchange="app.handleReturnPhotoUpload(this)">
+
+        <div style="display:flex;gap:6px;margin-bottom:14px;">
+          <button class="btn btn-secondary btn-sm" id="return-btn-camera" onclick="app.startReturnCamera()"
+            style="flex:1">📸 เปิดกล้อง</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('return-photo-upload').click()"
+            style="flex:1">📁 อัปโหลดรูป</button>
+        </div>
+
+        <div style="display:flex;gap:6px;margin-bottom:14px;display:none" id="return-cam-btns">
+          <button class="btn btn-secondary btn-sm" id="return-btn-snap" onclick="app.snapReturnPhoto()"
+            style="flex:1">📸 ถ่ายรูป</button>
+          <button class="btn btn-secondary btn-sm" id="return-btn-retake" onclick="app.retakeReturnPhoto()"
+            style="flex:1">🔄 ถ่ายใหม่</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('return-modal')">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="app.confirmReturn()">✅ ยืนยันการคืน</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Load scripts in correct order -->
+  <script src="js/config.js"></script>
+  <script src="js/radios.js"></script>
+  <script src="js/users.js"></script>
+  <script src="js/google-sheets-api.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+
+</html>
