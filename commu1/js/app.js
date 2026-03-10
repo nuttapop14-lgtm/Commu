@@ -303,6 +303,37 @@ class RadioBorrowSystem {
     this.renderRadioGrid();
   }
 
+  async handleQRFileUpload(input) {
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      this.showLoading(true);
+      this.showToast('🔍 กำลังวิเคราะห์ QR Code...', 'info');
+
+      const tempScanner = new Html5Qrcode("qr-reader-modal"); // Use existing element as worker
+      try {
+        const text = await tempScanner.scanFile(file, true);
+        const match = text.match(/R\d+/);
+        const id = match ? match[0].toUpperCase() : text.toUpperCase();
+
+        document.getElementById('qr-result').style.display = 'block';
+        document.getElementById('qr-val').textContent = id;
+
+        if (this.borrowed.has(id)) {
+          this.showToast(`วิทยุ ${id} ถูกยืมไปแล้ว!`, 'error');
+        } else {
+          this.selectRadio(id);
+          this.showToast(`✅ สแกนสำเร็จ: หมายเลข ${id}`, 'success');
+        }
+      } catch (err) {
+        console.error("QR File Scan Error:", err);
+        this.showToast('❌ ไม่พบ QR Code ในภาพ กรุณาลองใหม่', 'error');
+      } finally {
+        this.showLoading(false);
+        input.value = ''; // Reset input
+      }
+    }
+  }
+
   openQRModal() {
     this.qrActive = true;
     document.getElementById('qr-modal').classList.add('show');
@@ -863,12 +894,16 @@ document.addEventListener('DOMContentLoaded', () => {
   window.startQR = () => app.openQRModal(); // Mapping legacy name
   window.openQRModal = () => app.openQRModal();
   window.closeQRModal = () => app.closeQRModal();
-  window.startCamera = () => app.openCameraModal('borrow');
+  window.startCamera = () => document.getElementById('photo-upload').click();
   window.snapPhoto = () => app.handleCameraAction();
-  window.retakePhoto = () => app.openCameraModal('borrow');
-  window.startReturnCamera = () => app.openCameraModal('return');
+  window.retakePhoto = () => {
+    document.querySelector('#photo-display-card input[type="file"]').click();
+  };
+  window.startReturnCamera = () => document.getElementById('return-photo-upload').click();
   window.snapReturnPhoto = () => app.handleCameraAction();
-  window.retakeReturnPhoto = () => app.openCameraModal('return');
+  window.retakeReturnPhoto = () => {
+    document.querySelector('#return-photo-display-card input[type="file"]').click();
+  };
   window.handleReturnPhotoUpload = (input) => app.handleReturnPhotoUpload(input);
   window.submitBorrow = () => app.submitBorrow();
   window.confirmReturn = () => app.confirmReturn();

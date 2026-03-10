@@ -91,9 +91,13 @@
       <div id="tab-borrow">
         <div style="display:flex; gap:8px; align-items:center; margin-bottom:16px;">
           <div class="section-title" style="margin:0">เลือกวิทยุ</div>
-          <button class="btn-scan-small" onclick="app.openQRModal()">
-            <span class="icon">📷</span> สแกน QR
-          </button>
+          <div style="position:relative;">
+            <input type="file" accept="image/*" capture="environment" onchange="app.handleQRFileUpload(this)"
+              style="position:absolute; inset:0; opacity:0; cursor:pointer; z-index:10;">
+            <button class="btn-scan-small">
+              <span class="icon">📷</span> สแกน QR
+            </button>
+          </div>
         </div>
         <div class="qr-result" id="qr-result">✓ สแกนได้: <span id="qr-val"></span></div>
 
@@ -163,7 +167,11 @@
 
         <div class="divider"></div>
         <div class="photo-capture-container">
-          <div id="photo-display-card" class="photo-display-card" onclick="app.openCameraModal('borrow')">
+          <div id="photo-display-card" class="photo-display-card" style="position: relative;">
+            <!-- Native Camera Capture -->
+            <input type="file" accept="image/*" capture="environment" onchange="app.handlePhotoUpload(this)"
+              style="position:absolute; inset:0; opacity:0; cursor:pointer; z-index:10;">
+
             <div id="photo-empty-state">
               <div class="icon">📸</div>
               <p>ถ่ายภาพหลักฐานผู้ยืม</p>
@@ -283,7 +291,12 @@
         </div>
 
         <div class="photo-capture-container">
-          <div id="return-photo-display-card" class="photo-display-card" onclick="app.openCameraModal('return')">
+          <div id="return-photo-display-card" class="return-photo-display-card photo-display-card"
+            style="position: relative;">
+            <!-- Native Camera Capture -->
+            <input type="file" accept="image/*" capture="environment" onchange="app.handleReturnPhotoUpload(this)"
+              style="position:absolute; inset:0; opacity:0; cursor:pointer; z-index:10;">
+
             <div id="return-photo-empty-state">
               <div class="icon">📸</div>
               <p>ถ่ายภาพหลักฐานคนคืน</p>
