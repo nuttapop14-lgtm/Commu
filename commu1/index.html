@@ -91,13 +91,9 @@
       <div id="tab-borrow">
         <div style="display:flex; gap:8px; align-items:center; margin-bottom:16px;">
           <div class="section-title" style="margin:0">เลือกวิทยุ</div>
-          <div style="position:relative;">
-            <input type="file" accept="image/*" capture="environment" onchange="app.handleQRFileUpload(this)"
-              style="position:absolute; inset:0; opacity:0; cursor:pointer; z-index:10;">
-            <button class="btn-scan-small">
-              <span class="icon">📷</span> สแกน QR
-            </button>
-          </div>
+          <button class="btn-scan-small" onclick="app.openQRModal()">
+            <span class="icon">📷</span> สแกน QR
+          </button>
         </div>
         <div class="qr-result" id="qr-result">✓ สแกนได้: <span id="qr-val"></span></div>
 
@@ -340,9 +336,15 @@
           <div class="scanner-line"></div>
         </div>
       </div>
-      <div class="modal-footer" style="justify-content:center;">
+      <div class="modal-footer" style="flex-direction:column; gap:10px; padding:20px;">
+        <button class="btn btn-primary" onclick="document.getElementById('qr-file-input').click()"
+          style="background:var(--accent); font-size:14px;">
+          📁 เลือกรูปหรือถ่ายภาพสแกน
+        </button>
+        <input type="file" id="qr-file-input" accept="image/*" capture="environment" style="display:none"
+          onchange="app.handleQRFileUpload(this)">
         <button class="btn btn-secondary" onclick="app.closeQRModal()"
-          style="width:auto; padding:8px 24px;">ยกเลิก</button>
+          style="width:100%; margin:0; font-size:13px;">ยกเลิก</button>
       </div>
     </div>
   </div>

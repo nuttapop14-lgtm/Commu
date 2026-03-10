@@ -90,6 +90,24 @@ class RadioBorrowSystem {
     }
   }
 
+  // Helper to find Radio ID (1-84) from either ID itself or SN
+  findRadioId(text) {
+    if (!text) return null;
+    const clean = String(text).trim().toUpperCase();
+
+    // Check if it's a numeric ID in range
+    const num = parseInt(clean);
+    if (!isNaN(num) && num >= 1 && num <= this.TOTAL) return String(num);
+
+    // Check if it's an SN
+    if (typeof RADIOS_DB !== 'undefined') {
+      for (const [id, info] of Object.entries(RADIOS_DB)) {
+        if (info.sn.toUpperCase() === clean) return id;
+      }
+    }
+    return null;
+  }
+
   // Start clock
   startClock() {
     const el = document.getElementById('clock');
@@ -312,17 +330,21 @@ class RadioBorrowSystem {
       const tempScanner = new Html5Qrcode("qr-reader-modal"); // Use existing element as worker
       try {
         const text = await tempScanner.scanFile(file, true);
-        const match = text.match(/R\d+/);
-        const id = match ? match[0].toUpperCase() : text.toUpperCase();
+        const id = this.findRadioId(text);
+
+        if (!id) {
+          this.showToast(`❌ ไม่พบข้อมูลวิทยุสำหรับรหัส: ${text}`, 'error');
+          return;
+        }
 
         document.getElementById('qr-result').style.display = 'block';
         document.getElementById('qr-val').textContent = id;
 
         if (this.borrowed.has(id)) {
-          this.showToast(`วิทยุ ${id} ถูกยืมไปแล้ว!`, 'error');
+          this.showToast(`วิทยุหมายเลข ${id} ถูกยืมไปแล้ว!`, 'error');
         } else {
           this.selectRadio(id);
-          this.showToast(`✅ สแกนสำเร็จ: หมายเลข ${id}`, 'success');
+          this.showToast(`✅ สแกนสำเร็จ: ${id} (SN: ${RADIOS_DB[id].sn})`, 'success');
         }
       } catch (err) {
         console.error("QR File Scan Error:", err);
@@ -334,41 +356,59 @@ class RadioBorrowSystem {
     }
   }
 
-  openQRModal() {
+  async openQRModal() {
     this.qrActive = true;
     document.getElementById('qr-modal').classList.add('show');
 
-    // Initialize scanner inside modal
-    this.qrScanner = new Html5Qrcode("qr-reader-modal");
-    this.qrScanner.start(
-      { facingMode: "environment" },
-      {
+    // Small delay to ensure modal is rendered
+    await new Promise(r => setTimeout(r, 300));
+
+    try {
+      if (this.qrScanner) {
+        await this.qrScanner.stop().catch(() => { });
+      }
+      this.qrScanner = new Html5Qrcode("qr-reader-modal");
+
+      const config = {
         fps: 10,
         qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0
-      },
-      (text) => {
-        this.closeQRModal();
+      };
 
-        const match = text.match(/R\d+/);
-        const id = match ? match[0].toUpperCase() : text.toUpperCase();
+      await this.qrScanner.start(
+        { facingMode: "environment" },
+        config,
+        (text) => {
+          this.closeQRModal();
+          const id = this.findRadioId(text);
 
-        document.getElementById('qr-result').style.display = 'block';
-        document.getElementById('qr-val').textContent = id;
+          if (!id) {
+            this.showToast(`❌ ไม่พบข้อมูลวิทยุสำหรับรหัส: ${text}`, 'error');
+            return;
+          }
 
-        if (this.borrowed.has(id)) {
-          this.showToast(`วิทยุ ${id} ถูกยืมไปแล้ว!`, 'error');
-        } else {
-          this.selectRadio(id);
+          document.getElementById('qr-result').style.display = 'block';
+          document.getElementById('qr-val').textContent = id;
+          if (this.borrowed.has(id)) {
+            this.showToast(`วิทยุหมายเลข ${id} ถูกยืมไปแล้ว!`, 'error');
+          } else {
+            this.selectRadio(id);
+            this.showToast(`✅ สแกนสำเร็จ: ${id} (SN: ${RADIOS_DB[id].sn})`, 'success');
+          }
         }
-      },
-      () => { }
-    ).catch((err) => {
-      console.error(err);
-      this.qrActive = false;
-      this.showToast('ไม่สามารถเริ่มการสแกนได้ (ตรวจสอบสิทธิ์กล้อง)', 'error');
-      this.closeQRModal();
-    });
+      );
+    } catch (err) {
+      console.warn("QR Scanner Start Error:", err);
+      // Don't show toast immediately, let the user use the "Upload" fallback
+      const reader = document.getElementById('qr-reader-modal');
+      reader.innerHTML = `
+        <div style="padding:40px 20px; text-align:center; color:#fff;">
+          <div style="font-size:40px; margin-bottom:10px;">⚠️</div>
+          <div style="font-size:14px; margin-bottom:20px;">ไม่สามารถเปิดกล้องสแกนสดได้</div>
+          <div style="font-size:12px; color:#aaa;">กรุณากดปุ่มด้านล่างเพื่อถ่ายภาพสแกนแทน</div>
+        </div>
+      `;
+    }
   }
 
   async closeQRModal() {
@@ -556,10 +596,12 @@ class RadioBorrowSystem {
   }
 
   handleRadioSearch(val) {
+    // Try to find by SN or ID helper
     const idMatch = val.split(' | ')[0];
-    const i = parseInt(idMatch);
-    if (!isNaN(i) && i >= 1 && i <= this.TOTAL) {
-      this.selectRadio(String(i));
+    const resolvedId = this.findRadioId(idMatch);
+
+    if (resolvedId) {
+      this.selectRadio(resolvedId);
     }
   }
 
