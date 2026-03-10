@@ -14,6 +14,7 @@ class RadioBorrowSystem {
     this.pendingReturnId = null;
     this.returnPhotoDataUrl = null;
     this.returnCamStream = null;
+    this.facingMode = 'user'; // Default to front camera
 
     // Initialize Google Sheets API
     const config = typeof GS_CONFIG !== 'undefined' ? GS_CONFIG : {};
@@ -345,7 +346,7 @@ class RadioBorrowSystem {
     if (this.camStream) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
+        video: { facingMode: this.facingMode },
         audio: false
       });
       this.camStream = stream;
@@ -356,7 +357,22 @@ class RadioBorrowSystem {
       document.getElementById('btn-snap').style.display = 'inline-block';
       document.getElementById('cam-btns').style.display = 'flex';
     } catch (e) {
-      this.showToast('ไม่สามารถเปิดกล้องได้', 'error');
+      this.showToast('ไม่สามารถเปิดกล้องได้ หรือไม่มีกล้องที่เลือก', 'error');
+    }
+  }
+
+  async toggleCamera() {
+    this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
+    if (this.camStream) {
+      this.camStream.getTracks().forEach(t => t.stop());
+      this.camStream = null;
+      await this.startCamera();
+    } else if (this.returnCamStream) {
+      this.returnCamStream.getTracks().forEach(t => t.stop());
+      this.returnCamStream = null;
+      await this.startReturnCamera();
+    } else {
+      this.showToast(`สลับเป็นกล้อง ${this.facingMode === 'user' ? 'หน้า' : 'หลัง'} เรียบร้อย (กดเปิดกล้องเพื่อใช้งาน)`, 'info');
     }
   }
 
@@ -590,7 +606,7 @@ class RadioBorrowSystem {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
+        video: { facingMode: this.facingMode },
         audio: false
       });
       this.returnCamStream = stream;

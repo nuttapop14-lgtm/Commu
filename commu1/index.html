@@ -182,6 +182,7 @@
         <div style="display:flex;gap:6px;margin-bottom:14px;">
           <button class="btn btn-secondary btn-sm" id="btn-camera" onclick="app.startCamera()" style="flex:1">📸
             เปิดกล้อง</button>
+          <button class="btn btn-secondary btn-sm" onclick="app.toggleCamera()" style="flex:1">🔄 สลับกล้อง</button>
           <button class="btn btn-secondary btn-sm" onclick="document.getElementById('photo-upload').click()"
             style="flex:1">📁 อัปโหลดรูป</button>
         </div>
@@ -304,6 +305,7 @@
         <div style="display:flex;gap:6px;margin-bottom:14px;">
           <button class="btn btn-secondary btn-sm" id="return-btn-camera" onclick="app.startReturnCamera()"
             style="flex:1">📸 เปิดกล้อง</button>
+          <button class="btn btn-secondary btn-sm" onclick="app.toggleCamera()" style="flex:1">🔄 สลับกล้อง</button>
           <button class="btn btn-secondary btn-sm" onclick="document.getElementById('return-photo-upload').click()"
             style="flex:1">📁 อัปโหลดรูป</button>
         </div>
