@@ -618,7 +618,8 @@ img[src=""] {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
+  /* Enable horizontal scroll */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
@@ -751,6 +752,30 @@ tr:hover td {
 
 .modal-overlay.show {
   display: flex;
+}
+
+/* Full screen photo modal */
+#photo-modal .modal {
+  max-width: 95vw;
+  max-height: 95vh;
+  width: auto;
+  height: auto;
+}
+
+#photo-modal .modal-body {
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #000;
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+}
+
+#photo-modal-img {
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
 }
 
 .modal {

@@ -345,10 +345,15 @@ class RadioBorrowSystem {
     if (this.photoDataUrl) return;
     if (this.camStream) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: this.facingMode },
+      const constraints = {
+        video: {
+          facingMode: this.facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
         audio: false
-      });
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       this.camStream = stream;
       const video = document.getElementById('cam-stream');
       video.srcObject = stream;
@@ -362,17 +367,28 @@ class RadioBorrowSystem {
   }
 
   async toggleCamera() {
-    this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
+    // Stop all current streams
     if (this.camStream) {
       this.camStream.getTracks().forEach(t => t.stop());
       this.camStream = null;
-      await this.startCamera();
-    } else if (this.returnCamStream) {
+    }
+    if (this.returnCamStream) {
       this.returnCamStream.getTracks().forEach(t => t.stop());
       this.returnCamStream = null;
+    }
+
+    // Toggle mode
+    this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
+    this.showToast(`กำลังสลับเป็นกล้อง${this.facingMode === 'user' ? 'หน้า' : 'หลัง'}...`, 'info');
+
+    // Re-start if it was previously active
+    const isBorrowTab = document.getElementById('tab-borrow').style.display !== 'none';
+    const isReturnModalOpen = document.getElementById('return-modal').classList.contains('show');
+
+    if (isReturnModalOpen) {
       await this.startReturnCamera();
-    } else {
-      this.showToast(`สลับเป็นกล้อง ${this.facingMode === 'user' ? 'หน้า' : 'หลัง'} เรียบร้อย (กดเปิดกล้องเพื่อใช้งาน)`, 'info');
+    } else if (isBorrowTab) {
+      await this.startCamera();
     }
   }
 
@@ -605,10 +621,15 @@ class RadioBorrowSystem {
     if (this.returnCamStream) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: this.facingMode },
+      const constraints = {
+        video: {
+          facingMode: this.facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
         audio: false
-      });
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       this.returnCamStream = stream;
       const video = document.getElementById('return-cam-stream');
       video.srcObject = stream;
