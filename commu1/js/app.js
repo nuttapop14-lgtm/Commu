@@ -303,25 +303,25 @@ class RadioBorrowSystem {
     this.renderRadioGrid();
   }
 
-  // =================== QR SCANNER ===================
-  startQR() {
-    if (this.qrActive) return;
+  openQRModal() {
     this.qrActive = true;
-    document.getElementById('qr-placeholder').style.display = 'none';
-    document.getElementById('qr-reader').style.display = 'block';
+    document.getElementById('qr-modal').classList.add('show');
 
-    this.qrScanner = new Html5Qrcode("qr-reader");
+    // Initialize scanner inside modal
+    this.qrScanner = new Html5Qrcode("qr-reader-modal");
     this.qrScanner.start(
       { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 200, height: 200 } },
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
+      },
       (text) => {
-        this.qrScanner.stop();
-        this.qrActive = false;
-        document.getElementById('qr-reader').style.display = 'none';
-        document.getElementById('qr-placeholder').style.display = 'block';
+        this.closeQRModal();
 
         const match = text.match(/R\d+/);
         const id = match ? match[0].toUpperCase() : text.toUpperCase();
+
         document.getElementById('qr-result').style.display = 'block';
         document.getElementById('qr-val').textContent = id;
 
@@ -332,18 +332,34 @@ class RadioBorrowSystem {
         }
       },
       () => { }
-    ).catch(() => {
+    ).catch((err) => {
+      console.error(err);
       this.qrActive = false;
-      this.showToast('ไม่สามารถเปิดกล้องได้', 'error');
-      document.getElementById('qr-placeholder').style.display = 'block';
-      document.getElementById('qr-reader').style.display = 'none';
+      this.showToast('ไม่สามารถเริ่มการสแกนได้ (ตรวจสอบสิทธิ์กล้อง)', 'error');
+      this.closeQRModal();
     });
   }
 
-  // =================== CAMERA ===================
-  async startCamera() {
-    if (this.photoDataUrl) return;
-    if (this.camStream) return;
+  closeQRModal() {
+    if (this.qrScanner) {
+      this.qrScanner.stop().catch(() => { });
+      this.qrScanner = null;
+    }
+    this.qrActive = false;
+    document.getElementById('qr-modal').classList.remove('show');
+  }
+
+  // =================== CAMERA MODAL LOGIC ===================
+  openCameraModal(context) {
+    this.cameraContext = context; // 'borrow' or 'return'
+    document.getElementById('camera-modal').classList.add('show');
+    this.startStreaming();
+  }
+
+  async startStreaming() {
+    if (this.camStream) {
+      this.camStream.getTracks().forEach(t => t.stop());
+    }
     try {
       const constraints = {
         video: {
@@ -353,113 +369,57 @@ class RadioBorrowSystem {
         },
         audio: false
       };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      this.camStream = stream;
-      const video = document.getElementById('cam-stream');
-      video.srcObject = stream;
-      video.style.display = 'block';
-      document.getElementById('photo-placeholder').style.display = 'none';
-      document.getElementById('btn-snap').style.display = 'inline-block';
-      document.getElementById('cam-btns').style.display = 'flex';
+      this.camStream = await navigator.mediaDevices.getUserMedia(constraints);
+      const video = document.getElementById('main-viewfinder');
+      video.srcObject = this.camStream;
     } catch (e) {
-      this.showToast('ไม่สามารถเปิดกล้องได้ หรือไม่มีกล้องที่เลือก', 'error');
+      this.showToast('ไม่สามารถเข้าถึงกล้องได้', 'error');
+      this.closeCameraModal();
     }
   }
 
   async toggleCamera() {
-    // Stop all current streams
-    if (this.camStream) {
-      this.camStream.getTracks().forEach(t => t.stop());
-      this.camStream = null;
-    }
-    if (this.returnCamStream) {
-      this.returnCamStream.getTracks().forEach(t => t.stop());
-      this.returnCamStream = null;
-    }
-
-    // Toggle mode
     this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
     this.showToast(`กำลังสลับเป็นกล้อง${this.facingMode === 'user' ? 'หน้า' : 'หลัง'}...`, 'info');
-
-    // Re-start if it was previously active
-    const isBorrowTab = document.getElementById('tab-borrow').style.display !== 'none';
-    const isReturnModalOpen = document.getElementById('return-modal').classList.contains('show');
-
-    if (isReturnModalOpen) {
-      await this.startReturnCamera();
-    } else if (isBorrowTab) {
-      await this.startCamera();
-    }
+    await this.startStreaming();
   }
 
-  snapPhoto() {
-    const video = document.getElementById('cam-stream');
-    const canvas = document.getElementById('photo-canvas');
+  handleCameraAction() {
+    const video = document.getElementById('main-viewfinder');
+    const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
-    this.photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
 
+    if (this.cameraContext === 'borrow') {
+      this.photoDataUrl = dataUrl;
+      const prev = document.getElementById('photo-preview');
+      prev.src = dataUrl;
+      prev.style.display = 'block';
+      document.getElementById('photo-empty-state').style.display = 'none';
+      document.getElementById('btn-retake-borrow').style.display = 'block';
+    } else {
+      this.returnPhotoDataUrl = dataUrl;
+      const prev = document.getElementById('return-photo-preview');
+      prev.src = dataUrl;
+      prev.style.display = 'block';
+      document.getElementById('return-photo-empty-state').style.display = 'none';
+      document.getElementById('btn-retake-return').style.display = 'block';
+    }
+
+    this.showToast('บันทึกรูปภาพเรียบร้อย', 'success');
+    this.closeCameraModal();
+  }
+
+  closeCameraModal() {
     if (this.camStream) {
       this.camStream.getTracks().forEach(t => t.stop());
       this.camStream = null;
     }
-    video.style.display = 'none';
-
-    const prev = document.getElementById('photo-preview');
-    prev.src = this.photoDataUrl;
-    prev.style.display = 'block';
-    document.getElementById('btn-snap').style.display = 'none';
-    document.getElementById('btn-retake').style.display = 'inline-block';
-    this.showToast('ถ่ายภาพสำเร็จ', 'success');
+    document.getElementById('camera-modal').classList.remove('show');
   }
 
-  retakePhoto() {
-    this.photoDataUrl = null;
-    document.getElementById('photo-preview').style.display = 'none';
-    document.getElementById('photo-preview').src = '';
-    document.getElementById('photo-placeholder').style.display = 'block';
-    document.getElementById('btn-retake').style.display = 'none';
-    document.getElementById('cam-btns').style.display = 'none';
-    this.startCamera();
-  }
-
-  async handlePhotoUpload(input) {
-    if (input.files && input.files[0]) {
-      let file = input.files[0];
-
-      // Handle HEIC/HEIF conversion
-      if (file.type === '' && (file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif'))) {
-        this.showToast('🔄 กำลังประมวลผลไฟล์ HEIC...', 'info');
-        try {
-          const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.7 });
-          file = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
-        } catch (e) {
-          this.showToast('❌ แปลงไฟล์ HEIC ไม่สำเร็จ', 'error');
-          return;
-        }
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        this.photoDataUrl = e.target.result;
-        const prev = document.getElementById('photo-preview');
-        prev.src = this.photoDataUrl;
-        prev.style.display = 'block';
-        document.getElementById('photo-placeholder').style.display = 'none';
-        document.getElementById('cam-stream').style.display = 'none';
-        if (this.camStream) {
-          this.camStream.getTracks().forEach(t => t.stop());
-          this.camStream = null;
-        }
-        document.getElementById('cam-btns').style.display = 'none';
-        this.showToast('อัปโหลดรูปภาพสำเร็จ', 'success');
-      };
-      reader.readAsDataURL(file);
-    }
-  }
-
-  // =================== SUBMIT BORROW ===================
   async submitBorrow() {
     const name = document.getElementById('borrower-name').value.trim();
     const phone = document.getElementById('borrower-phone').value.trim();
@@ -479,16 +439,15 @@ class RadioBorrowSystem {
     }
 
     const selectedList = Array.from(this.selectedRadios);
-    const syncResults = [];
     this.showLoading(true);
 
     for (const radioId of selectedList) {
-      if (this.borrowed.has(radioId)) continue; // Skip if already borrowed
+      if (this.borrowed.has(radioId)) continue;
 
       const radioInfo = typeof RADIOS_DB !== 'undefined' ? RADIOS_DB[radioId] : null;
 
       const record = {
-        id: Date.now() + Math.random(), // Unique ID even for batch
+        id: Date.now() + Math.random(),
         radioId: radioId,
         radioSN: radioInfo ? radioInfo.sn : radioId,
         radioModel: radioInfo ? radioInfo.model : '—',
@@ -503,10 +462,8 @@ class RadioBorrowSystem {
       this.borrowed.add(radioId);
       this.saveLocalData();
 
-      // Sync with Google Sheets
       if (this.sheetsAPI.config.enabled) {
-        const synced = await this.sheetsAPI.appendRow(record);
-        syncResults.push(synced);
+        await this.sheetsAPI.appendRow(record);
       }
     }
 
@@ -526,15 +483,13 @@ class RadioBorrowSystem {
     document.getElementById('borrower-name').value = '';
     document.getElementById('borrower-phone').value = '';
     document.getElementById('borrower-dept').value = '';
-    document.getElementById('borrow-qty').value = 1;
-    this.handleQuantityChange(1);
     document.getElementById('qr-result').style.display = 'none';
+
+    // Reset photo card
     document.getElementById('photo-preview').style.display = 'none';
     document.getElementById('photo-preview').src = '';
-    document.getElementById('photo-placeholder').style.display = 'block';
-    document.getElementById('cam-btns').style.display = 'none';
-    if (this.camStream) { this.camStream.getTracks().forEach(t => t.stop()); this.camStream = null; }
-    document.getElementById('cam-stream').style.display = 'none';
+    document.getElementById('photo-empty-state').style.display = 'block';
+    document.getElementById('btn-retake-borrow').style.display = 'none';
   }
 
   initUserDatalist() {
@@ -564,8 +519,7 @@ class RadioBorrowSystem {
   }
 
   handleRadioSearch(val) {
-    // If user selects from datalist or types exact match
-    const idMatch = val.split(' | ')[0]; // Get "1" from "1 | SN: ..."
+    const idMatch = val.split(' | ')[0];
     const i = parseInt(idMatch);
     if (!isNaN(i) && i >= 1 && i <= this.TOTAL) {
       this.selectRadio(String(i));
@@ -582,8 +536,48 @@ class RadioBorrowSystem {
     }
   }
 
+  async handlePhotoUpload(input) {
+    if (input.files && input.files[0]) {
+      let file = input.files[0];
+      if (file.type === '' && (file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif'))) {
+        this.showToast('🔄 กำลังประมวลผลไฟล์ HEIC...', 'info');
+        try {
+          const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.7 });
+          file = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
+        } catch (e) { this.showToast('❌ แปลงไฟล์ HEIC ไม่สำเร็จ', 'error'); return; }
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.photoDataUrl = e.target.result;
+        const prev = document.getElementById('photo-preview');
+        prev.src = this.photoDataUrl;
+        prev.style.display = 'block';
+        document.getElementById('photo-empty-state').style.display = 'none';
+        document.getElementById('btn-retake-borrow').style.display = 'block';
+        this.showToast('อัปโหลดรูปภาพสำเร็จ', 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  async handleReturnPhotoUpload(input) {
+    if (input.files && input.files[0]) {
+      let file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.returnPhotoDataUrl = e.target.result;
+        const prev = document.getElementById('return-photo-preview');
+        prev.src = this.returnPhotoDataUrl;
+        prev.style.display = 'block';
+        document.getElementById('return-photo-empty-state').style.display = 'none';
+        document.getElementById('btn-retake-return').style.display = 'block';
+        this.showToast('อัปโหลดหลักฐานการคืนสำเร็จ', 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
   // =================== RETURN ===================
-  // Open return modal with photo capture
   openReturnModal(id) {
     const rec = this.records.find(r => r.id === id);
     if (!rec) return;
@@ -591,7 +585,6 @@ class RadioBorrowSystem {
     this.pendingReturnId = id;
     this.returnPhotoDataUrl = null;
 
-    // Show return info
     document.getElementById('return-info').innerHTML = `
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
         <span class="radio-tag">${rec.radioId}</span>
@@ -605,116 +598,10 @@ class RadioBorrowSystem {
     // Reset photo area
     document.getElementById('return-photo-preview').style.display = 'none';
     document.getElementById('return-photo-preview').src = '';
-    document.getElementById('return-photo-placeholder').style.display = 'block';
-    document.getElementById('return-cam-stream').style.display = 'none';
-    document.getElementById('return-btn-snap').style.display = 'none';
-    document.getElementById('return-btn-retake').style.display = 'none';
-    document.getElementById('return-cam-btns').style.display = 'none';
+    document.getElementById('return-photo-empty-state').style.display = 'block';
+    document.getElementById('btn-retake-return').style.display = 'none';
 
-    // Show modal
     document.getElementById('return-modal').classList.add('show');
-  }
-
-  // Start return photo camera
-  async startReturnCamera() {
-    if (this.returnPhotoDataUrl) return;
-    if (this.returnCamStream) return;
-
-    try {
-      const constraints = {
-        video: {
-          facingMode: this.facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      this.returnCamStream = stream;
-      const video = document.getElementById('return-cam-stream');
-      video.srcObject = stream;
-      video.style.display = 'block';
-      document.getElementById('return-photo-placeholder').style.display = 'none';
-      document.getElementById('return-btn-snap').style.display = 'inline-block';
-      document.getElementById('return-cam-btns').style.display = 'flex';
-    } catch (e) {
-      this.showToast('ไม่สามารถเปิดกล้องได้', 'error');
-    }
-  }
-
-  // Snap return photo
-  snapReturnPhoto() {
-    const video = document.getElementById('return-cam-stream');
-    const canvas = document.getElementById('return-photo-canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    this.returnPhotoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-
-    if (this.returnCamStream) {
-      this.returnCamStream.getTracks().forEach(t => t.stop());
-      this.returnCamStream = null;
-    }
-    video.style.display = 'none';
-
-    const prev = document.getElementById('return-photo-preview');
-    prev.src = this.returnPhotoDataUrl;
-    prev.style.display = 'block';
-    document.getElementById('return-btn-snap').style.display = 'none';
-    document.getElementById('return-btn-retake').style.display = 'inline-block';
-    this.showToast('ถ่ายภาพสำเร็จ', 'success');
-  }
-
-  // Retake return photo
-  retakeReturnPhoto() {
-    this.returnPhotoDataUrl = null;
-    document.getElementById('return-photo-preview').style.display = 'none';
-    document.getElementById('return-photo-preview').src = '';
-    document.getElementById('return-photo-placeholder').style.display = 'block';
-    document.getElementById('return-btn-snap').style.display = 'none';
-    document.getElementById('return-btn-retake').style.display = 'none';
-    document.getElementById('return-cam-btns').style.display = 'flex'; // Keep buttons visible
-    this.startReturnCamera();
-  }
-
-  async handleReturnPhotoUpload(input) {
-    if (input.files && input.files[0]) {
-      let file = input.files[0];
-
-      // Handle HEIC/HEIF conversion
-      if (file.type === '' && (file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif'))) {
-        this.showToast('🔄 กำลังประมวลผลไฟล์ HEIC...', 'info');
-        try {
-          const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.7 });
-          file = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
-        } catch (e) {
-          this.showToast('❌ แปลงไฟล์ HEIC ไม่สำเร็จ', 'error');
-          return;
-        }
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        this.returnPhotoDataUrl = e.target.result;
-        const prev = document.getElementById('return-photo-preview');
-        prev.src = this.returnPhotoDataUrl;
-        prev.style.display = 'block';
-        document.getElementById('return-photo-placeholder').style.display = 'none';
-        document.getElementById('return-cam-stream').style.display = 'none';
-
-        if (this.returnCamStream) {
-          this.returnCamStream.getTracks().forEach(t => t.stop());
-          this.returnCamStream = null;
-        }
-
-        // Show button container and update toggle
-        document.getElementById('return-cam-btns').style.display = 'flex';
-        document.getElementById('return-btn-snap').style.display = 'none';
-        document.getElementById('return-btn-retake').style.display = 'inline-block';
-        this.showToast('อัปโหลดหลักฐานการคืนสำเร็จ', 'success');
-      };
-      reader.readAsDataURL(file);
-    }
   }
 
   // Confirm return with photo
@@ -963,13 +850,15 @@ document.addEventListener('DOMContentLoaded', () => {
   window.handleLogin = (e) => app.handleLogin(e);
   window.handleLogout = () => app.handleLogout();
   window.switchTab = (tab) => app.switchTab(tab);
-  window.startQR = () => app.startQR();
-  window.startCamera = () => app.startCamera();
-  window.snapPhoto = () => app.snapPhoto();
-  window.retakePhoto = () => app.retakePhoto();
-  window.startReturnCamera = () => app.startReturnCamera();
-  window.snapReturnPhoto = () => app.snapReturnPhoto();
-  window.retakeReturnPhoto = () => app.retakeReturnPhoto();
+  window.startQR = () => app.openQRModal(); // Mapping legacy name
+  window.openQRModal = () => app.openQRModal();
+  window.closeQRModal = () => app.closeQRModal();
+  window.startCamera = () => app.openCameraModal('borrow');
+  window.snapPhoto = () => app.handleCameraAction();
+  window.retakePhoto = () => app.openCameraModal('borrow');
+  window.startReturnCamera = () => app.openCameraModal('return');
+  window.snapReturnPhoto = () => app.handleCameraAction();
+  window.retakeReturnPhoto = () => app.openCameraModal('return');
   window.handleReturnPhotoUpload = (input) => app.handleReturnPhotoUpload(input);
   window.submitBorrow = () => app.submitBorrow();
   window.confirmReturn = () => app.confirmReturn();
