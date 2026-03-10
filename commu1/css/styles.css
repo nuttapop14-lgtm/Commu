@@ -492,13 +492,13 @@ select option {
   box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.3);
 }
 
-.camera-footer {
+.modal-footer.camera-footer {
   background: #111;
   padding: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 30px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 40px;
   border-top: none;
 }
 

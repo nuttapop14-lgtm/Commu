@@ -340,9 +340,15 @@ class RadioBorrowSystem {
     });
   }
 
-  closeQRModal() {
+  async closeQRModal() {
     if (this.qrScanner) {
-      this.qrScanner.stop().catch(() => { });
+      try {
+        if (this.qrScanner.getState() === 2) { // 2 = SCANNING
+          await this.qrScanner.stop();
+        }
+      } catch (e) {
+        console.warn("QR Scanner stop warning:", e);
+      }
       this.qrScanner = null;
     }
     this.qrActive = false;
@@ -827,6 +833,10 @@ class RadioBorrowSystem {
   // =================== TOAST & LOADING ===================
   showToast(msg, type = 'info') {
     const t = document.getElementById('toast');
+    if (!t) {
+      console.log(`Toast: [${type}] ${msg}`);
+      return;
+    }
     t.textContent = msg;
     t.className = `toast show ${type}`;
     clearTimeout(this.toastTimer);
