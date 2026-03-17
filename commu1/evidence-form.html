@@ -17,20 +17,47 @@
             padding: 20px;
             margin: 0;
             font-size: 10pt;
+            min-height: 100vh;
         }
 
         .page {
             background-color: white;
             width: 210mm;
-            /* A4 width */
             min-height: 297mm;
-            /* A4 height */
             padding: 20mm;
-            /* A4 margins */
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             position: relative;
             box-sizing: border-box;
             color: black;
+            transform-origin: top center;
+        }
+
+        /* Mobile specific adjustments to view A4 page */
+        @media screen and (max-width: 210mm) {
+            body {
+                padding: 10px 5px;
+            }
+            .page {
+                /* Scale the page to fit screen width */
+                zoom: 0.45; /* Initial guess for mobile, but transform is better for compatibility */
+                transform: scale(calc(100vw / 210mm * 0.95));
+                margin-top: 0;
+                margin-bottom: 20px;
+            }
+            /* If zoom is supported, it provides a better experience */
+            @supports (zoom: 1) {
+                .page {
+                    zoom: calc(100vw / 210mm * 0.95);
+                    transform: none;
+                }
+            }
+            .print-btn-container {
+                width: 100%;
+                text-align: center;
+                position: sticky;
+                top: 10px;
+                z-index: 100;
+            }
         }
 
         .print-btn-container {
@@ -172,16 +199,16 @@
     </div>
 
     <div class="page" id="printable-area">
-        <div class="text-right" style="margin-bottom: 4px; font-weight: bold;">แบบ ทอ.๓๕</div>
+        <div class="text-right" style="margin-bottom: 4px; font-weight: bold;">แบบ ทอ.๗๕</div>
 
         <!-- TOP TABLE -->
         <table class="form-table" style="border-bottom: none;">
             <colgroup>
-                <col style="width: 5%;"> <!-- 1: ลำดับ -->
+                <col style="width: 6%;"> <!-- 1: ลำดับ -->
                 <col style="width: 15%;"> <!-- 2: หมายเลข -->
                 <col style="width: 35%;"> <!-- 3: ชื่อพัสดุ -->
                 <col style="width: 6%;"> <!-- 4: หน่วยนับ -->
-                <col style="width: 6%;"> <!-- 5: จำนวน -->
+                <col style="width: 7%;"> <!-- 5: จำนวน -->
                 <col style="width: 11%;"> <!-- 6: หน่วยละ -->
                 <col style="width: 11%;"> <!-- 7: ราคารวม -->
                 <col style="width: 11%;"> <!-- 8: จำนวนรับ -->
@@ -253,7 +280,7 @@
                         <span style="letter-spacing: -2px;">-----------------------------------</span>
                     </div>
 
-                    <div style="padding: 5px 5px; font-size: 12pt; line-height: 1.2; margin-top: 5px;">
+                    <div style="padding: 5px 5px; font-size: 8pt; line-height: 1.2; margin-top: 5px;">
                         พัสดุที่รับไปถ้ามีการชำรุดเสียหายอันมิได้เกิดจากการใช้งานในสภาพปกติ<br>
                         จะต้องรับรองชดใช้ค่าพัสดุนั้น ตามที่ทางราชการเรียกชดใช้ทุกประการ
                     </div>

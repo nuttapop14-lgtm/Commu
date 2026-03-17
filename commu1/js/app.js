@@ -23,11 +23,13 @@ class RadioBorrowSystem {
       this.sheetsAPI.loadConfig();
     }
 
-    // Authorized emails
-    this.AUTHORIZED_EMAILS = [
+    this.authorized_emails = [
       'nuttapop14@gmail.com', 'khunchaiboy461@gmail.com',
       // Add more authorized emails here
     ];
+
+    this.inactivityTimeout = 15 * 60 * 1000; // 15 minutes in ms
+    this.inactivityTimer = null;
 
     this.init();
   }
@@ -159,7 +161,7 @@ class RadioBorrowSystem {
     e.preventDefault();
     const email = document.getElementById('login-email').value.trim().toLowerCase();
 
-    if (!this.AUTHORIZED_EMAILS.includes(email)) {
+    if (!this.authorized_emails.includes(email)) {
       document.getElementById('login-error').classList.add('show');
       return false;
     }
@@ -179,15 +181,42 @@ class RadioBorrowSystem {
     document.getElementById('user-info').style.display = 'flex';
     document.getElementById('user-email').textContent = this.currentUser.email;
     document.getElementById('user-avatar').textContent = this.currentUser.email.charAt(0).toUpperCase();
+    this.startInactivityTimer();
   }
 
-  handleLogout() {
+  startInactivityTimer() {
+    this.resetInactivityTimer();
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(event => {
+      document.addEventListener(event, () => this.resetInactivityTimer(), true);
+    });
+  }
+
+  resetInactivityTimer() {
+    if (!this.currentUser) return;
+    if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
+    this.inactivityTimer = setTimeout(() => {
+      this.handleLogout(true);
+    }, this.inactivityTimeout);
+  }
+
+  handleLogout(isAuto = false) {
     this.currentUser = null;
     localStorage.removeItem('currentUser');
     document.getElementById('login-page').classList.remove('hidden');
     document.getElementById('user-info').style.display = 'none';
     document.getElementById('login-email').value = '';
-    this.showToast('👋 ออกจากระบบเรียบร้อย', 'info');
+
+    if (this.inactivityTimer) {
+      clearTimeout(this.inactivityTimer);
+      this.inactivityTimer = null;
+    }
+
+    if (isAuto) {
+      this.showToast('🔒 ล็อกเอาต์อัตโนมัติเนื่องจากไม่มีการใช้งาน', 'info');
+    } else {
+      this.showToast('👋 ออกจากระบบเรียบร้อย', 'info');
+    }
   }
 
   // =================== TABS ===================
@@ -812,14 +841,22 @@ class RadioBorrowSystem {
       r.name.toLowerCase().includes(q) ||
       r.phone.includes(q)
     ));
+
+    // เรียงลำดับตามหมายเลขวิทยุ (น้อยไปมาก) เพื่อให้หาเครื่องได้ง่าย
+    active.sort((a, b) => {
+      const idA = parseInt(a.radioId) || 0;
+      const idB = parseInt(b.radioId) || 0;
+      return idA - idB;
+    });
+
     const el = document.getElementById('return-list');
     if (active.length === 0) {
-      el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:30px;font-size:13px;">ไม่มีรายการยืมที่ตรงเงื่อนไข</div>';
+      el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px;font-size:14px;background:rgba(255,255,255,0.5);border-radius:16px;">📭 ไม่พบรายการที่กำลังยืม</div>';
       return;
     }
+
     el.innerHTML = active.map(r => {
-      // เตรียม URL รูปย่อ (รองรับทั้ง Drive และ Base64)
-      let thumbSrc = 'images/TACCOM46.PNG'; // Fallback
+      let thumbSrc = 'images/TACCOM46.PNG';
       if (r.photo) {
         if (r.photo.includes('drive.google.com')) {
           const fileId = r.photo.match(/[-\w]{25,}/);
@@ -830,20 +867,25 @@ class RadioBorrowSystem {
       }
 
       return `
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
-          <div style="display:flex; gap:12px; align-items:center;">
-            <img class="return-list-img" src="${thumbSrc}" onerror="this.src='https://placehold.co/60x60?text=IMG'">
-            <div>
-              <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
-                <span class="radio-tag">${r.radioId}</span>
-                <span style="font-size:14px;font-weight:700;">${r.name}</span>
+        <div class="return-item-card">
+          <div class="return-item-info">
+            <div class="return-item-thumb-wrapper">
+              <img class="return-list-img" src="${thumbSrc}" onclick="app.viewPhoto('${r.photo}', 'รูปผู้ยืม: ${r.name}')" onerror="this.src='https://placehold.co/60x60?text=IMG'">
+            </div>
+            <div class="return-item-details">
+              <div class="return-item-header">
+                <span class="radio-tag">#${r.radioId.padStart(2, '0')}</span>
+                <span class="borrower-name">${r.name}</span>
               </div>
-              <div style="font-size:12px;color:var(--muted);">📞 ${r.phone} &nbsp; ⏰ ${this.formatTime(r.borrowTime)}</div>
+              <div class="return-item-meta">
+                <span>📱 ${r.phone}</span>
+                <span class="time-stamp">⏰ ${this.formatTime(r.borrowTime)}</span>
+              </div>
             </div>
           </div>
-          <div style="display:flex;gap:6px;">
-            <button class="btn-return" onclick="app.returnRadio(${r.id})">คืน</button>
-            <button class="btn-print-row" onclick="app.printRecord(${r.id})">🖨</button>
+          <div class="return-item-actions">
+            <button class="btn-return" onclick="app.returnRadio(${r.id})">📥 คืน</button>
+            <button class="btn-print-row" onclick="app.printRecord(${r.id})">🖨️</button>
           </div>
         </div>
       `;

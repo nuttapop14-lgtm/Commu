@@ -52,18 +52,20 @@
         <p>Operations Control</p>
       </div>
     </div>
-    <div class="header-stats">
-      <div class="stat-pill">
-        <div class="dot dot-green"></div>
-        <span>ว่าง: <strong id="hdr-avail">84</strong></span>
+    <div class="header-right">
+      <div class="header-stats">
+        <div class="stat-pill">
+          <div class="dot dot-green"></div>
+          <span>ว่าง: <strong id="hdr-avail">84</strong></span>
+        </div>
+        <div class="stat-pill">
+          <div class="dot dot-red"></div>
+          <span>ยืม: <strong id="hdr-borrowed">0</strong></span>
+        </div>
+        <span id="clock" class="header-clock">--:--:--</span>
+        <!-- Include hidden remain for JS compatibility -->
+        <span id="hdr-remain" style="display:none">84</span>
       </div>
-      <div class="stat-pill">
-        <div class="dot dot-red"></div>
-        <span>ยืม: <strong id="hdr-borrowed">0</strong></span>
-      </div>
-      <span id="clock" class="header-clock">--:--:--</span>
-      <!-- Include hidden remain for JS compatibility -->
-      <span id="hdr-remain" style="display:none">84</span>
 
       <div class="user-info" id="user-info" style="display:none">
         <div class="user-avatar" id="user-avatar">U</div>
@@ -75,6 +77,33 @@
 
   <!-- MAIN LAYOUT -->
   <div class="main">
+
+    <!-- STATS PANEL: MOVED FOR RESPONSIVE -->
+    <div class="panel-stats">
+      <div class="dashboard-container">
+        <!-- SUMMARY STATS -->
+        <div class="summary-cards">
+          <div class="summary-card card-available">
+            <span class="num num-green" id="sum-avail">84</span>
+            <div class="label">📻 วิทยุว่างพร้อมใช้งาน</div>
+          </div>
+          <div class="summary-card card-borrowed">
+            <span class="num num-red" id="sum-borrowed">0</span>
+            <div class="label">📤 กำลังถูกยืม</div>
+          </div>
+          <div class="summary-card card-total">
+            <span class="num num-blue">84</span>
+            <div class="label">📦 วิทยุทั้งหมดในระบบ</div>
+          </div>
+        </div>
+
+        <!-- VISUAL RADIO GRID (Re-added to show off the system visually) -->
+        <div class="section-title">สถานะช่องเก็บวิทยุแบบเรียลไทม์</div>
+        <div class="radio-grid" id="radio-grid">
+          <!-- Filled by JS app.renderRadioGrid() if active -->
+        </div>
+      </div>
+    </div>
 
     <!-- LEFT PANEL: ACTION FORMS -->
     <div class="panel-left">
@@ -220,27 +249,6 @@
     <!-- RIGHT PANEL: DASHBOARD & DATA -->
     <div class="panel-right">
       <div class="dashboard-container">
-        <!-- SUMMARY STATS -->
-        <div class="summary-cards">
-          <div class="summary-card card-available">
-            <span class="num num-green" id="sum-avail">84</span>
-            <div class="label">📻 วิทยุว่างพร้อมใช้งาน</div>
-          </div>
-          <div class="summary-card card-borrowed">
-            <span class="num num-red" id="sum-borrowed">0</span>
-            <div class="label">📤 กำลังถูกยืม</div>
-          </div>
-          <div class="summary-card card-total">
-            <span class="num num-blue">84</span>
-            <div class="label">📦 วิทยุทั้งหมดในระบบ</div>
-          </div>
-        </div>
-
-        <!-- VISUAL RADIO GRID (Re-added to show off the system visually) -->
-        <div class="section-title">สถานะช่องเก็บวิทยุแบบเรียลไทม์</div>
-        <div class="radio-grid" id="radio-grid">
-          <!-- Filled by JS app.renderRadioGrid() if active -->
-        </div>
 
         <div class="divider"></div>
 
