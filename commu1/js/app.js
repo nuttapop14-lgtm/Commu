@@ -25,7 +25,7 @@ class RadioBorrowSystem {
 
     // Authorized emails
     this.AUTHORIZED_EMAILS = [
-      'nuttapop14@gmail.com',
+      'nuttapop14@gmail.com', 'khunchaiboy461@gmail.com',
       // Add more authorized emails here
     ];
 
@@ -213,11 +213,11 @@ class RadioBorrowSystem {
       const isSelected = this.selectedRadios.has(id);
       const btn = document.createElement('button');
       btn.className = 'radio-btn ' + (isBorrowed ? 'borrowed' : isSelected ? 'selected' : 'available');
-      
+
       const snLast4 = (radioInfo && radioInfo.sn) ? radioInfo.sn.slice(-4) : '';
-      btn.innerHTML = `<div style="line-height:1;">${String(i).padStart(2, '0')}</div>` + 
-                     (snLast4 ? `<div style="font-size:10px; font-weight:500; opacity:0.7; margin-top:4px;">${snLast4}</div>` : '');
-      
+      btn.innerHTML = `<div style="line-height:1;">${String(i).padStart(2, '0')}</div>` +
+        (snLast4 ? `<div style="font-size:10px; font-weight:500; opacity:0.7; margin-top:4px;">${snLast4}</div>` : '');
+
       btn.title = radioInfo ? `SN: ${radioInfo.sn} (${radioInfo.model})` : `Radio ${id}`;
       if (!isBorrowed) btn.onclick = () => this.selectRadio(id);
       grid.appendChild(btn);
