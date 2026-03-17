@@ -57,11 +57,27 @@ class RadioBorrowSystem {
     if (this.sheetsAPI.config.enabled) {
       try {
         await this.syncFromSheets();
-        this.showToast('🔄 ซิงค์ข้อมูลกับ Google Sheets สำเร็จ', 'success');
+        this.showToast('🔄 ซิงค์ข้อมูลจากคลาวด์สำเร็จ', 'success');
+        this.startAutoSync(); // Start auto-sync after initial sync
       } catch (error) {
-        this.showToast('❌ โหลดข้อมูลจาก Sheets ไม่สำเร็จ', 'error');
+        console.error('Initial sync error:', error);
+        this.showToast('❌ โหลดข้อมูลจาก Sheets ไม่สำเร็จ: ' + (error.message || error), 'error');
       }
     }
+  }
+
+  // Auto-sync every 30 seconds
+  startAutoSync() {
+    if (this.syncTimer) clearInterval(this.syncTimer);
+    this.syncTimer = setInterval(async () => {
+      if (this.sheetsAPI.config.enabled && !this.isLoading) {
+        try {
+          await this.syncFromSheets(true); // silent sync
+        } catch (e) {
+          console.error('Auto-sync failed:', e);
+        }
+      }
+    }, 30000); // 30 seconds
   }
 
   // Load data from localStorage
@@ -79,14 +95,27 @@ class RadioBorrowSystem {
   }
 
   // Sync from Google Sheets
-  async syncFromSheets() {
+  async syncFromSheets(silent = false) {
     try {
       const records = await this.sheetsAPI.fetchData();
+
+      // Sort immediately after fetching: latest first
+      records.sort((a, b) => new Date(b.borrowTime) - new Date(a.borrowTime));
+
       this.records = records;
       this.borrowed = new Set(records.filter(r => r.status === 'borrowed').map(r => r.radioId));
       this.saveLocalData();
+
+      // Update UI
+      this.renderRadioGrid();
+      this.renderTable();
+      this.renderReturnList();
+      this.updateStats();
+
+      if (!silent) this.showToast('🔄 อัปเดตข้อมูลเรียลไทม์แล้ว', 'success');
     } catch (error) {
-      throw error;
+      if (!silent) throw error;
+      console.error('Sync error:', error);
     }
   }
 
@@ -464,10 +493,13 @@ class RadioBorrowSystem {
   handleCameraAction() {
     const video = document.getElementById('main-viewfinder');
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    // ลดขนาดรูปลงมากๆ เพื่อให้ข้อความสั้นพอที่จะเซฟลง Google Sheets แบบชิลๆ
+    const targetWidth = 150;
+    const targetHeight = (video.videoHeight / video.videoWidth) * targetWidth;
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, targetWidth, targetHeight);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.15); // ลดความชัดลงอีกให้โค้ดสั้นที่สุด
 
     if (this.cameraContext === 'borrow') {
       this.photoDataUrl = dataUrl;
@@ -502,6 +534,9 @@ class RadioBorrowSystem {
     const phone = document.getElementById('borrower-phone').value.trim();
     const dept = document.getElementById('borrower-dept').value.trim();
 
+    // Ensure selectedRadios is up to date from inputs before starting
+    this.updateSelectedRadios();
+
     if (this.selectedRadios.size === 0) {
       this.showToast('กรุณาเลือกหมายเลขวิทยุ (เลือกได้หลายเครื่อง)', 'error');
       return;
@@ -514,6 +549,14 @@ class RadioBorrowSystem {
       this.showToast('กรุณาใส่เบอร์โทรศัพท์', 'error');
       return;
     }
+    if (!this.photoDataUrl) {
+      this.showToast('❌ กรุณาถ่ายภาพหลักฐานการยืมก่อนบันทึก', 'error');
+      // Highlight the photo area
+      const photoCard = document.getElementById('photo-display-card');
+      photoCard.style.borderColor = 'var(--red)';
+      setTimeout(() => photoCard.style.borderColor = '', 2000);
+      return;
+    }
 
     const selectedList = Array.from(this.selectedRadios);
     this.showLoading(true);
@@ -524,7 +567,7 @@ class RadioBorrowSystem {
       const radioInfo = typeof RADIOS_DB !== 'undefined' ? RADIOS_DB[radioId] : null;
 
       const record = {
-        id: Date.now() + Math.random(),
+        id: Math.floor(Date.now() + Math.random() * 1000), // Ensure integer ID
         radioId: radioId,
         radioSN: radioInfo ? radioInfo.sn : radioId,
         radioModel: radioInfo ? radioInfo.model : '—',
@@ -539,18 +582,25 @@ class RadioBorrowSystem {
       this.borrowed.add(radioId);
       this.saveLocalData();
 
+      // Update UI immediately for each record to give feedback
+      this.renderTable();
+      this.updateStats();
+      this.renderRadioGrid();
+      this.renderReturnList();
+
       if (this.sheetsAPI.config.enabled) {
-        await this.sheetsAPI.appendRow(record);
+        // Send to sheet in background, show toast on error
+        this.sheetsAPI.appendRow(record).then(() => {
+          this.showToast('☁️ บันทึกลง Google Sheets สำเร็จ', 'success');
+        }).catch(e => {
+          console.error('Background sheet sync failed:', e);
+          this.showToast('⚠️ บันทึกเฉพาะในเครื่อง (Sheets: ' + (e.message || 'ไม่สำเร็จ') + ')', 'error');
+        });
       }
     }
 
     this.showLoading(false);
     this.showToast(`✅ บันทึกยืมวิทยุ ${selectedList.length} เครื่อง เรียบร้อยแล้ว`, 'success');
-
-    this.updateStats();
-    this.renderRadioGrid();
-    this.renderTable();
-    this.renderReturnList();
     this.resetForm();
   }
 
@@ -626,14 +676,15 @@ class RadioBorrowSystem {
         } catch (e) { this.showToast('❌ แปลงไฟล์ HEIC ไม่สำเร็จ', 'error'); return; }
       }
       const reader = new FileReader();
-      reader.onload = (e) => {
-        this.photoDataUrl = e.target.result;
+      reader.onload = async (e) => {
+        const compressed = await this.resizeImage(e.target.result);
+        this.photoDataUrl = compressed;
         const prev = document.getElementById('photo-preview');
         prev.src = this.photoDataUrl;
         prev.style.display = 'block';
         document.getElementById('photo-empty-state').style.display = 'none';
         document.getElementById('btn-retake-borrow').style.display = 'block';
-        this.showToast('อัปโหลดรูปภาพสำเร็จ', 'success');
+        this.showToast('อัปโหลดและบีบอัดรูปภาพสำเร็จ', 'success');
       };
       reader.readAsDataURL(file);
     }
@@ -643,14 +694,15 @@ class RadioBorrowSystem {
     if (input.files && input.files[0]) {
       let file = input.files[0];
       const reader = new FileReader();
-      reader.onload = (e) => {
-        this.returnPhotoDataUrl = e.target.result;
+      reader.onload = async (e) => {
+        const compressed = await this.resizeImage(e.target.result);
+        this.returnPhotoDataUrl = compressed;
         const prev = document.getElementById('return-photo-preview');
         prev.src = this.returnPhotoDataUrl;
         prev.style.display = 'block';
         document.getElementById('return-photo-empty-state').style.display = 'none';
         document.getElementById('btn-retake-return').style.display = 'block';
-        this.showToast('อัปโหลดหลักฐานการคืนสำเร็จ', 'success');
+        this.showToast('อัปโหลดและบีบอัดรูปภาพสำเร็จ', 'success');
       };
       reader.readAsDataURL(file);
     }
@@ -691,6 +743,15 @@ class RadioBorrowSystem {
     const rec = this.records.find(r => r.id === id);
     if (!rec) return;
 
+    if (!this.returnPhotoDataUrl) {
+      this.showToast('❌ กรุณาถ่ายภาพหลักฐานการคืนก่อนยืนยัน', 'error');
+      // Highlight the photo area
+      const photoCard = document.getElementById('return-photo-display-card');
+      photoCard.style.borderColor = 'var(--red)';
+      setTimeout(() => photoCard.style.borderColor = '', 2000);
+      return;
+    }
+
     // Update record
     rec.status = 'returned';
     rec.returnTime = new Date().toISOString();
@@ -701,23 +762,21 @@ class RadioBorrowSystem {
     // Close modal
     document.getElementById('return-modal').classList.remove('show');
 
-    // Sync with Google Sheets
+    // Sync with Google Sheets in background
     if (this.sheetsAPI.config.enabled) {
-      this.showLoading(true);
-      const synced = await this.sheetsAPI.updateRow(id, {
+      this.sheetsAPI.updateRow(id, {
         status: 'returned',
         returnTime: rec.returnTime,
         returnPhoto: rec.returnPhoto
+      }).then(() => {
+        this.showToast('☁️ อัปเดตการคืนลง Google Sheets สำเร็จ', 'success');
+      }).catch(e => {
+        console.error('Background return sync failed:', e);
+        this.showToast('⚠️ บันทึกเฉพาะในเครื่อง (Sheets: ' + (e.message || 'ไม่สำเร็จ') + ')', 'error');
       });
-      this.showLoading(false);
-      if (synced) {
-        this.showToast(`📥 คืนวิทยุ ${rec.radioId} เรียบร้อย (synced)`, 'success');
-      } else {
-        this.showToast(`📥 คืนวิทยุ ${rec.radioId} เรียบร้อย (local only)`, 'info');
-      }
-    } else {
-      this.showToast(`📥 คืนวิทยุ ${rec.radioId} เรียบร้อย`, 'success');
     }
+
+    this.showToast(`📥 คืนวิทยุ ${rec.radioId} เรียบร้อยแล้ว`, 'success');
 
     // Reset
     this.pendingReturnId = null;
@@ -774,6 +833,9 @@ class RadioBorrowSystem {
       r.phone.includes(q) ||
       (r.dept || '').toLowerCase().includes(q)
     );
+
+    // Ensure they are sorted: latest borrowTime first
+    filtered.sort((a, b) => new Date(b.borrowTime) - new Date(a.borrowTime));
     const tbody = document.getElementById('records-body');
     const empty = document.getElementById('empty-state');
     if (filtered.length === 0) {
@@ -785,21 +847,27 @@ class RadioBorrowSystem {
     tbody.innerHTML = filtered.map((r, i) => `
       <tr>
         <td class="time-mono">${i + 1}</td>
-      <td><span class="radio-tag">#${r.radioId.padStart(2, '0')}</span></td>
-      <td class="time-mono" style="font-size:11px;">
-        <span style="font-weight:700; color: #334155;">${r.radioSN || '—'}</span><br>
-        <span style="color: #64748b;">${r.radioModel || '—'}</span>
+      <td class="time-mono" style="white-space:nowrap; font-size:12px;">
+        <span class="radio-tag">#${r.radioId.padStart(2, '0')}</span>
+        <span style="color: #475569; margin-left:8px;">${r.radioSN || '—'}</span>
+        <span style="color: #94a3b8; margin-left:4px;">(${r.radioModel || '—'})</span>
       </td>
       <td style="font-weight:700; color: var(--accent); white-space:nowrap;">${r.name}</td>
-      <td class="time-mono" style="color: #334155;">${r.phone}</td>
-      <td style="color: #475569; font-size:12px; font-weight:500;">${r.dept || '—'}</td>
+      <td style="white-space:nowrap;">
+        <span class="time-mono" style="color: #334155;">${r.phone}</span>
+        <span style="color: #64748b; font-size:12px; margin-left:6px;">(${r.dept || '—'})</span>
+      </td>
       <td class="time-mono" style="font-size:12px; color: #475569;">${this.formatTime(r.borrowTime)}</td>
       <td class="time-mono" style="font-size:12px; color: #475569;">${r.returnTime ? this.formatTime(r.returnTime) : '—'}</td>
         <td>${this.renderPhotoCell(r.photo, 'viewPhoto', r.id)}</td>
-        <td>${this.renderPhotoCell(r.returnPhoto, 'viewReturnPhoto', r.id)}</td>
-        <td>${r.status === 'borrowed' ?
-        '<span class="badge badge-yellow">⏳ ยืมอยู่</span>' :
-        '<span class="badge badge-green">✓ คืนแล้ว</span>'}</td>
+        <td style="white-space:nowrap;">
+          <div style="display:inline-flex; align-items:center; gap:8px;">
+            ${this.renderPhotoCell(r.returnPhoto, 'viewReturnPhoto', r.id)}
+            ${r.status === 'borrowed' ?
+        '<span class="badge badge-yellow" style="font-size:10px; padding:2px 6px;">⏳ ยืมอยู่</span>' :
+        '<span class="badge badge-green" style="font-size:10px; padding:2px 6px;">✓ คืนแล้ว</span>'}
+          </div>
+        </td>
         <td>
           <div style="display:flex;gap:4px;">
             ${r.status === 'borrowed' ? `<button class="btn-return" onclick="app.returnRadio(${r.id})">คืน</button>` : ''}
@@ -852,24 +920,98 @@ class RadioBorrowSystem {
   }
 
   // =================== PHOTO HELPERS ===================
+  async resizeImage(base64Str, maxWidth = 300, maxQuality = 0.25) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = base64Str;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', maxQuality));
+      };
+    });
+  }
+
   renderPhotoCell(url, methodName, id) {
     if (!url) return '<div class="no-photo">—</div>';
 
-    // Check if it's a Drive link or a direct image base64
-    const isDrive = url.includes('drive.google.com');
-
-    if (isDrive) {
-      return `
-            <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
-                <img class="photo-thumb" src="${url}" 
-                    onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" 
-                    onclick="app.${methodName}('${id}')">
-                <button class="btn-return" style="padding:2px 6px; font-size:9px;" 
-                    onclick="window.open('${url}', '_blank')">🔗 เปิดรูป</button>
-            </div>`;
+    // Safety check for old logs
+    if (url === 'Photo too large for sheet' || !url.match(/^(data:|http|blob:)/i)) {
+      return '<div class="no-photo" style="font-size:10px; color:var(--red);">⚠️ รูปหาย</div>';
     }
 
-    return `<img class="photo-thumb" src="${url}" onclick="app.${methodName}('${id}')">`;
+    // Drive URL Handling
+    if (url.includes('drive.google.com')) {
+      const fileId = url.match(/[-\w]{25,}/);
+      if (fileId) {
+        const thumbUrl = `https://drive.google.com/thumbnail?id=${fileId[0]}&sz=w200`;
+        return `
+          <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
+            <img class="photo-thumb" src="${thumbUrl}" 
+                 onclick="app.viewPhoto('${url}', '${id}')" 
+                 onerror="this.src='https://placehold.co/40x40?text=IMG'">
+            <button class="btn-return" style="padding:2px 6px; font-size:9px;" 
+                    onclick="window.open('${url}', '_blank')">📂 Drive</button>
+          </div>`;
+      }
+    }
+
+    // Base64 Handling
+    if (url.startsWith('data:image')) {
+      return `
+        <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
+          <img class="photo-thumb" src="${url}" 
+               onclick="app.viewPhoto('${url}', '${id}')" >
+        </div>`;
+    }
+
+    return `<img class="photo-thumb" src="${url}" onclick="app.viewPhoto('${url}', '${id}')">`;
+  }
+
+  viewPhoto(url, title = 'รูปภาพหลักฐาน') {
+    const modal = document.getElementById('photo-modal');
+    const img = document.getElementById('photo-modal-img');
+    const link = document.getElementById('photo-modal-link');
+    const titleEl = document.getElementById('photo-modal-title');
+
+    if (!modal || !img) return;
+
+    let displayUrl = url;
+
+    // If it's a drive URL, try to use a better quality thumbnail for preview
+    if (url.includes('drive.google.com')) {
+      const fileId = url.match(/[-\w]{25,}/);
+      if (fileId) {
+        displayUrl = `https://drive.google.com/thumbnail?id=${fileId[0]}&sz=w800`;
+      }
+    }
+
+    img.src = displayUrl;
+
+    // If it's Base64, we hide the download link or set it to download the base64
+    if (url.startsWith('data:image')) {
+      link.href = url;
+      link.download = `photo_${Date.now()}.jpg`;
+      link.textContent = '💾 ดาวน์โหลดรูปลงเครื่อง';
+    } else {
+      link.href = url;
+      link.removeAttribute('download');
+      link.textContent = 'เปิดลิงก์รูปต้นฉบับ';
+    }
+
+    titleEl.textContent = `🖼️ ดูรูปภาพ: ${title}`;
+    modal.classList.add('show');
   }
 
   // =================== EXPORT CSV ===================
@@ -951,9 +1093,24 @@ document.addEventListener('DOMContentLoaded', () => {
   window.confirmReturn = () => app.confirmReturn();
   window.filterReturn = () => app.renderReturnList();
   window.renderTable = () => app.renderTable();
+  window.viewPhoto = (url, title) => app.viewPhoto(url, title);
   window.exportCSV = () => app.exportCSV();
   window.openSettings = () => app.openSettings();
   window.closeModal = (id) => app.closeModal(id);
+
+  // Debug helper: call testSheets() in browser console to check connection
+  window.testSheets = async () => {
+    console.log('🔍 ทดสอบ Google Sheets connection...');
+    console.log('Config:', app.sheetsAPI.config);
+    const result = await app.sheetsAPI.testConnection();
+    console.log('ผลการทดสอบ:', result);
+    if (result.ok) {
+      app.showToast('✅ Apps Script เชื่อมต่อได้ปกติ', 'success');
+    } else {
+      app.showToast('❌ Apps Script: ' + result.error, 'error');
+    }
+    return result;
+  };
 });
 
 // Legacy window.onload for compatibility

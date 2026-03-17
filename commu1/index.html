@@ -234,16 +234,13 @@
           <thead>
             <tr>
               <th>#</th>
-              <th>วิทยุ</th>
-              <th>Serial Number</th>
+              <th>วิทยุ / SN / Model</th>
               <th>ชื่อผู้ยืม</th>
-              <th>เบอร์</th>
-              <th>แผนก</th>
+              <th>เบอร์ / แผนก</th>
               <th>เวลายืม</th>
               <th>เวลาคืน</th>
               <th>รูปยืม</th>
-              <th>รูปคืน</th>
-              <th>สถานะ</th>
+              <th>รูปคืน / สถานะ</th>
               <th>จัดการ</th>
             </tr>
           </thead>
@@ -365,6 +362,23 @@
         <button class="btn-round" onclick="app.toggleCamera()" title="สลับกล้อง">🔄</button>
         <button class="btn-snap-large" onclick="app.handleCameraAction()"></button>
         <button class="btn-round" onclick="app.closeCameraModal()" title="ยกเลิก">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHOTO VIEWER MODAL -->
+  <div class="modal-overlay" id="photo-modal">
+    <div class="modal photo-modal-content">
+      <div class="modal-header">
+        <h3 id="photo-modal-title">🖼️ ดูรูปภาพหลักฐาน</h3>
+        <button class="btn-close" onclick="app.closeModal('photo-modal')">✕</button>
+      </div>
+      <div class="modal-body" style="padding:0; background:#000; text-align:center; overflow:hidden;">
+        <img id="photo-modal-img" src="" style="max-width:100%; max-height:70vh; object-fit:contain; display:block; margin:0 auto;">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('photo-modal')">ปิด</button>
+        <a id="photo-modal-link" href="#" target="_blank" class="btn btn-primary" style="text-decoration:none; display:inline-block; width:auto;">🔗 เปิดไฟล์จริง</a>
       </div>
     </div>
   </div>
