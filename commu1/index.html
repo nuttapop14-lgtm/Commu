@@ -3,45 +3,41 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ระบบยืม-คืน วิทยุสื่อสาร</title>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap"
-    rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>RadioTrack | ระบบยืม-คืน วิทยุสื่อสาร</title>
+  <link rel="icon" type="image/png" href="images/TACCOM46.PNG">
+
+  <link rel="stylesheet" href="css/styles.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"
     crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
-  <link rel="icon" type="image/png" href="images/TACCOM46.PNG">
-  <link rel="stylesheet" href="css/styles.css">
 </head>
 
 <body>
 
   <!-- LOGIN PAGE -->
   <div class="login-page" id="login-page">
-    <div class="login-box">
+    <div class="login-box glass-card">
       <div class="login-logo">
         <div class="icon">
-          <img src="images/TACCOM46.PNG" alt="TACCOM46 Logo" style="width: 80px; height: 80px; object-fit: contain;">
+          <img src="images/TACCOM46.PNG" alt="TACCOM46 Logo" style="width: 100%; height: 100%; object-fit: contain;">
         </div>
         <h2>RadioTrack</h2>
-        <p>ระบบยืม-คืน วิทยุสื่อสาร</p>
+        <p>ระบบบริหารจัดการวิทยุสื่อสารอัจฉริยะ</p>
       </div>
-      <form class="login-form" onsubmit="return handleLogin(event)">
+      <form class="login-form" onsubmit="return app ? app.handleLogin(event) : handleLogin(event)">
         <div class="login-error" id="login-error">
-          ❌ อีเมลไม่ได้รับอนุญาต กรุณาติดต่อผู้ดูแล
+          ❌ อีเมลไม่ได้รับอนุญาต กรุณาติดต่อผู้ดูแลระบบ
         </div>
-        <div class="form-group">
-          <label>📧 อีเมลผู้ใช้</label>
-          <input type="email" id="login-email" placeholder="example@company.com" required>
+        <div class="form-group" style="text-align: left;">
+          <label style="color: var(--text-muted);">📧 อีเมลผู้ใช้ (ลงทะเบียนเท่านั้น)</label>
+          <input type="email" id="login-email" placeholder="user@company.com" required
+            style="padding: 16px; font-size: 16px;">
         </div>
-        <button type="submit" class="btn btn-primary" style="margin-top:8px">
+        <button type="submit" class="btn btn-primary" style="margin-top: 16px; padding: 18px;">
           🔐 เข้าสู่ระบบ
         </button>
       </form>
-      <div style="text-align:center;margin-top:20px;font-size:12px;color:var(--muted)">
-        อนุญาตเฉพาะอีเมลที่ลงทะเบียนไว้เท่านั้น
-      </div>
     </div>
   </div>
 
@@ -49,12 +45,11 @@
   <header>
     <div class="logo">
       <div class="logo-icon">
-        <img src="images/TACCOM46.PNG" alt="TACCOM46 Logo"
-          style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px;">
+        <img src="images/TACCOM46.PNG" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">
       </div>
       <div class="logo-text">
         <h1>RadioTrack</h1>
-        <p>ระบบยืม-คืน วิทยุสื่อสาร</p>
+        <p>Operations Control</p>
       </div>
     </div>
     <div class="header-stats">
@@ -63,249 +58,269 @@
         <span>ว่าง: <strong id="hdr-avail">84</strong></span>
       </div>
       <div class="stat-pill">
-        <div class="dot dot-yellow"></div>
+        <div class="dot dot-red"></div>
         <span>ยืม: <strong id="hdr-borrowed">0</strong></span>
       </div>
-      <div class="stat-pill">
-        <div class="dot dot-red"></div>
-        <span>คงเหลือ: <strong id="hdr-remain">84</strong></span>
-      </div>
       <span id="clock" class="header-clock">--:--:--</span>
+      <!-- Include hidden remain for JS compatibility -->
+      <span id="hdr-remain" style="display:none">84</span>
+
       <div class="user-info" id="user-info" style="display:none">
         <div class="user-avatar" id="user-avatar">U</div>
-        <span id="user-email">user@email.com</span>
-        <button class="btn-logout" onclick="handleLogout()">ออกจากระบบ</button>
+        <span id="user-email" class="user-email">user@email.com</span>
+        <button class="btn-logout" onclick="app ? app.handleLogout() : handleLogout()">ออกระบบ</button>
       </div>
     </div>
   </header>
 
+  <!-- MAIN LAYOUT -->
   <div class="main">
-    <!-- LEFT PANEL -->
+
+    <!-- LEFT PANEL: ACTION FORMS -->
     <div class="panel-left">
-      <div class="tabs">
-        <button class="tab active" onclick="switchTab('borrow')">📤 ยืมวิทยุ</button>
-        <button class="tab" onclick="switchTab('return')">📥 คืนวิทยุ</button>
-      </div>
-
-      <!-- BORROW TAB -->
-      <div id="tab-borrow">
-        <div style="display:flex; gap:8px; align-items:center; margin-bottom:16px;">
-          <div class="section-title" style="margin:0">เลือกวิทยุ</div>
-          <button class="btn-scan-small" onclick="app.openQRModal()">
-            <span class="icon">📷</span> สแกน QR
-          </button>
+      <div class="form-container">
+        <!-- TABS -->
+        <div class="tabs">
+          <button class="tab active" onclick="app ? app.switchTab('borrow') : switchTab('borrow')">📤
+            ยืมวิทยุใหม่</button>
+          <button class="tab" onclick="app ? app.switchTab('return') : switchTab('return')">📥 คืนวิทยุ</button>
         </div>
-        <div class="qr-result" id="qr-result">✓ สแกนได้: <span id="qr-val"></span></div>
 
-        <!-- RADIO PREVIEW -->
-        <div id="radio-preview-card"
-          style="display:none; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.05); animation:slideUp 0.3s ease;">
-          <div style="display:flex; gap:16px; align-items:center;">
+        <!-- BORROW TAB -->
+        <div id="tab-borrow">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 class="section-title" style="margin:0">การเลือกวิทยุสื่อสาร</h3>
+            <button class="btn-scan-small" onclick="app.openQRModal()">
+              <span class="icon">📷</span> สแกน QR ตัวเครื่อง
+            </button>
+          </div>
+
+          <div class="qr-result" id="qr-result"
+            style="display:none; padding:12px; background:rgba(16,185,129,0.1); color:var(--success); border-radius:12px; margin-bottom:16px; font-weight:600; font-family:var(--font-mono); font-size:14px;">
+            ✓ สแกนสำเร็จ: <span id="qr-val"></span>
+          </div>
+
+          <!-- RADIO PREVIEW -->
+          <div id="radio-preview-card"
+            style="display:none; background:#f8fafc; border:1px solid #cbd5e1; border-radius:16px; padding:16px; margin-bottom:24px; display:none; flex-direction:row; gap:16px; align-items:center;">
             <div
-              style="width:80px; height:80px; background:var(--surface2); border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px solid var(--border);">
+              style="width:80px; height:80px; background:#fff; border-radius:12px; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px solid #e2e8f0; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
               <img id="preview-radio-img" src="" alt="Radio" style="width:100%; height:100%; object-fit:contain;">
             </div>
             <div style="flex:1;">
               <div
-                style="font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">
-                วิทยุที่เลือก</div>
+                style="font-size:12px; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">
+                ข้อมูลวิทยุที่เลือก</div>
               <div id="preview-radio-id"
-                style="font-size:24px; font-weight:800; color:var(--accent); font-family:'IBM Plex Mono',monospace; line-height:1.2;">
+                style="font-size:20px; font-weight:800; color:var(--primary); font-family:var(--font-mono); line-height:1.2;">
                 --</div>
-              <div id="preview-radio-info" style="font-size:13px; color:var(--text); font-weight:500; margin-top:2px;">
-                --</div>
+              <div id="preview-radio-info"
+                style="font-size:13px; color:var(--text-main); font-weight:500; margin-top:4px;">--</div>
             </div>
-            <button class="btn-close" onclick="app.clearSelectedRadio()" style="align-self:flex-start;">✕</button>
+            <button class="clear-input-btn" onclick="app.clearSelectedRadio()"
+              style="position:relative; right:0; width:36px; height:36px; top:auto; background:white; box-shadow:var(--shadow-sm);">✕</button>
           </div>
-        </div>
 
+          <div class="form-group" style="background:#f1f5f9; padding:16px; border-radius:16px;">
+            <label style="color:var(--text-main); font-size:15px;">📦 จำนวนเครื่องที่ต้องการยืมต่อครั้ง</label>
+            <input type="number" id="borrow-qty" min="1" max="84" value="1"
+              oninput="app.handleQuantityChange(this.value)"
+              style="font-family:var(--font-mono); font-weight:700; color:var(--primary); font-size:18px; text-align:center;">
+          </div>
 
-        <div class="form-group">
-          <label>📦 จำนวนเครื่องที่ต้องการยืม</label>
-          <input type="number" id="borrow-qty" min="1" max="84" value="1" oninput="app.handleQuantityChange(this.value)"
-            style="font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--accent);">
-        </div>
+          <div id="radio-inputs-container">
+            <div class="form-group">
+              <label>ค้นหาหมายเลขวิทยุเครื่องที่ 1</label>
+              <div class="radio-input-group">
+                <input type="text" class="radio-search-input" placeholder="พิมพ์หมายเลขหรือ S/N..."
+                  list="radio-datalist" style="font-family:var(--font-mono); font-weight:600; color:var(--primary);"
+                  oninput="app.updateSelectedRadios()">
+                <button class="clear-input-btn"
+                  onclick="this.previousElementSibling.value=''; app.updateSelectedRadios()">✕</button>
+              </div>
+            </div>
+          </div>
+          <datalist id="radio-datalist"></datalist>
+          <input type="hidden" id="sel-radio">
 
-        <div id="radio-inputs-container">
+          <div class="divider"></div>
+
+          <h3 class="section-title">ข้อมูลผู้ทำรายการ</h3>
           <div class="form-group">
-            <label>ค้นหาหมายเลขวิทยุเครื่องที่ 1</label>
-            <div class="radio-input-group">
-              <input type="text" class="radio-search-input" placeholder="พิมพ์ค้นหาหมายเลข..." list="radio-datalist"
-                style="font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--accent);"
-                oninput="app.updateSelectedRadios()">
-              <button class="clear-input-btn"
-                onclick="this.previousElementSibling.value=''; app.updateSelectedRadios()">✕</button>
+            <label>👤 ชื่อ-นามสกุล *</label>
+            <input type="text" id="borrower-name" placeholder="ระบุชื่อผู้ยืม" list="user-datalist"
+              oninput="app.handleUserSelect(this.value)">
+            <datalist id="user-datalist"></datalist>
+          </div>
+
+          <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div class="form-group" style="flex:1; min-width:200px;">
+              <label>📱 โทรศัพท์ติดต่อ *</label>
+              <input type="tel" id="borrower-phone" placeholder="08x-xxx-xxxx" style="font-family:var(--font-mono);">
+            </div>
+            <div class="form-group" style="flex:1; min-width:200px;">
+              <label>🏢 สังกัด / แผนก</label>
+              <input type="text" id="borrower-dept" placeholder="เช่น Operation">
             </div>
           </div>
-        </div>
-        <datalist id="radio-datalist"></datalist>
 
-        <!-- Keep hidden for backward compatibility in some logic if needed -->
-        <input type="hidden" id="sel-radio">
+          <div class="divider"></div>
 
-        <div class="divider"></div>
-        <div class="section-title">ข้อมูลผู้ยืม</div>
+          <h3 class="section-title">📸 หลักฐานการทำรายการ</h3>
+          <div class="photo-capture-container">
+            <div id="photo-display-card" class="photo-display-card">
+              <!-- Native Camera Input (Hidden but fills parent) -->
+              <input type="file" accept="image/*" capture="environment" onchange="app.handlePhotoUpload(this)"
+                style="position:absolute; inset:0; opacity:0; cursor:pointer; z-index:10; width:100%; height:100%;">
 
-        <div class="form-group">
-          <label>ชื่อ-นามสกุล *</label>
-          <input type="text" id="borrower-name" placeholder="ชื่อ นามสกุล" list="user-datalist"
-            oninput="app.handleUserSelect(this.value)">
-          <datalist id="user-datalist"></datalist>
-        </div>
-        <div class="form-group">
-          <label>เบอร์โทรศัพท์ *</label>
-          <input type="tel" id="borrower-phone" placeholder="0XX-XXX-XXXX">
-        </div>
-        <div class="form-group">
-          <label>แผนก / ตำแหน่ง</label>
-          <input type="text" id="borrower-dept" placeholder="เช่น ฝ่ายบริการ">
-        </div>
-
-        <div class="divider"></div>
-        <div class="photo-capture-container">
-          <div id="photo-display-card" class="photo-display-card" style="position: relative;">
-            <!-- Native Camera Capture -->
-            <input type="file" accept="image/*" capture="environment" onchange="app.handlePhotoUpload(this)"
-              style="position:absolute; inset:0; opacity:0; cursor:pointer; z-index:10;">
-
-            <div id="photo-empty-state">
-              <div class="icon">📸</div>
-              <p>ถ่ายภาพหลักฐานผู้ยืม</p>
-              <span class="btn-tiny">แตะเพื่อถ่ายรูป</span>
+              <div id="photo-empty-state" style="text-align:center; pointer-events:none;">
+                <div class="icon">📸</div>
+                <p>ถ่ายภาพตัวบุคคลยืนยันทำรายการ</p>
+                <div
+                  style="display:inline-block; margin-top:12px; background:rgba(79,70,229,0.1); color:var(--primary); padding:6px 16px; border-radius:20px; font-size:12px; font-weight:700;">
+                  แตะเพื่อถ่ายรูปจากกล้องมือถือ</div>
+              </div>
+              <img id="photo-preview" src="" alt="Evidence">
             </div>
-            <img id="photo-preview" src="" alt="Evidence">
+
+            <div class="photo-actions-row">
+              <button class="btn-action-small" onclick="document.getElementById('photo-upload').click()">
+                📂 อัปโหลดรูปจากเครื่อง
+              </button>
+              <button class="btn-action-small" id="btn-retake-borrow"
+                style="display:none; border-color:var(--danger); color:var(--danger);"
+                onclick="app.openCameraModal('borrow')">
+                🔄 เปิดกล้องระบบ
+              </button>
+            </div>
           </div>
 
-          <div class="photo-actions-row">
-            <button class="btn-action-small" onclick="document.getElementById('photo-upload').click()">
-              📁 อัปโหลด
-            </button>
-            <button class="btn-action-small" id="btn-retake-borrow" style="display:none"
-              onclick="app.openCameraModal('borrow')">
-              🔄 ถ่ายใหม่
-            </button>
+          <input type="file" id="photo-upload" accept="image/*" style="display:none"
+            onchange="app.handlePhotoUpload(this)">
+          <canvas id="photo-canvas" style="display:none"></canvas>
+
+          <button class="btn btn-primary" onclick="app ? app.submitBorrow() : submitBorrow()" style="margin-top:24px;">
+            <span style="font-size:20px;">✅</span> ยืนยันการทำรายการยืม
+          </button>
+        </div>
+
+        <!-- RETURN TAB -->
+        <div id="tab-return" style="display:none">
+          <div class="section-title">ค้นหารายการที่ต้องการคืน</div>
+          <div class="form-group">
+            <input type="text" id="return-search" placeholder="🔍 พิมพ์ชื่อ, เบอร์โทร, หรือหมายเลขวิทยุ..."
+              oninput="app ? app.filterReturn() : filterReturn()" style="padding:16px;">
           </div>
+          <div id="return-list" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
-
-        <input type="file" id="photo-upload" accept="image/*" style="display:none"
-          onchange="app.handlePhotoUpload(this)">
-        <canvas id="photo-canvas" style="display:none"></canvas>
-
-        <button class="btn btn-primary" onclick="submitBorrow()">✅ บันทึกการยืม</button>
       </div>
+    </div> <!-- END LEFT PANEL -->
 
-      <!-- RETURN TAB -->
-      <div id="tab-return" style="display:none">
-        <div class="section-title">ค้นหารายการยืม</div>
-        <div class="form-group">
-          <input type="text" id="return-search" placeholder="🔍 ชื่อ, เบอร์ หรือหมายเลขวิทยุ" oninput="filterReturn()">
-        </div>
-        <div id="return-list"></div>
-      </div>
-    </div>
 
-    <!-- RIGHT PANEL -->
+    <!-- RIGHT PANEL: DASHBOARD & DATA -->
     <div class="panel-right">
-      <div class="summary-cards">
-        <div class="summary-card card-available">
-          <div class="num num-green" id="sum-avail">84</div>
-          <div class="label">📻 วิทยุว่าง</div>
+      <div class="dashboard-container">
+        <!-- SUMMARY STATS -->
+        <div class="summary-cards">
+          <div class="summary-card card-available">
+            <span class="num num-green" id="sum-avail">84</span>
+            <div class="label">📻 วิทยุว่างพร้อมใช้งาน</div>
+          </div>
+          <div class="summary-card card-borrowed">
+            <span class="num num-red" id="sum-borrowed">0</span>
+            <div class="label">📤 กำลังถูกยืม</div>
+          </div>
+          <div class="summary-card card-total">
+            <span class="num num-blue">84</span>
+            <div class="label">📦 วิทยุทั้งหมดในระบบ</div>
+          </div>
         </div>
-        <div class="summary-card card-borrowed">
-          <div class="num num-red" id="sum-borrowed">0</div>
-          <div class="label">📤 ถูกยืม</div>
+
+        <!-- VISUAL RADIO GRID (Re-added to show off the system visually) -->
+        <div class="section-title">สถานะช่องเก็บวิทยุแบบเรียลไทม์</div>
+        <div class="radio-grid" id="radio-grid">
+          <!-- Filled by JS app.renderRadioGrid() if active -->
         </div>
-        <div class="summary-card card-total">
-          <div class="num num-blue">84</div>
-          <div class="label">📦 ทั้งหมด</div>
+
+        <div class="divider"></div>
+
+        <!-- RECORDS TABLE -->
+        <div class="records-header">
+          <h3 class="section-title" style="margin:0">ประวัติการทำรายการล่าสุด</h3>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <input class="search-box" type="text" placeholder="🔍 ค้นหารายการ..." id="table-search"
+              oninput="app ? app.renderTable() : renderTable()">
+            <button class="btn btn-secondary" onclick="app ? app.exportCSV() : exportCSV()"
+              style="width:auto; padding:10px 16px; border-radius:30px; font-size:13px; font-weight:700;">📊</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:36px">#</th>
+                <th style="min-width:110px">วิทยุ</th>
+                <th style="min-width:80px">สถานะ</th>
+                <th style="min-width:160px">ผู้ยืม / ติดต่อ</th>
+                <th style="min-width:120px">เวลายืม / คืน</th>
+                <th style="min-width:60px">รูปยืม</th>
+                <th style="min-width:60px">รูปคืน</th>
+                <th style="min-width:80px">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="records-body"></tbody>
+          </table>
+          <div id="empty-state"
+            style="text-align:center; padding:60px 40px; color:var(--text-muted); font-size:15px; font-weight:500;">
+            <div style="font-size:48px; margin-bottom:16px; opacity:0.5;">📭</div>
+            ยังไม่มีประวัติการทำรายการในวันนี้
+          </div>
         </div>
       </div>
+    </div> <!-- END RIGHT PANEL -->
 
-      <div class="records-header">
-        <div class="section-title" style="margin:0">รายการยืม-คืน</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input class="search-box" type="text" placeholder="🔍 ค้นหา..." id="table-search" oninput="renderTable()">
-          <button class="btn btn-secondary btn-sm" onclick="exportCSV()" style="white-space:nowrap">📊 Export</button>
-        </div>
-      </div>
+  </div> <!-- END MAIN -->
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>วิทยุ / SN / Model</th>
-              <th>ชื่อผู้ยืม</th>
-              <th>เบอร์ / แผนก</th>
-              <th>เวลายืม</th>
-              <th>เวลาคืน</th>
-              <th>รูปยืม</th>
-              <th>รูปคืน / สถานะ</th>
-              <th>จัดการ</th>
-            </tr>
-          </thead>
-          <tbody id="records-body"></tbody>
-        </table>
-        <div id="empty-state" style="text-align:center;padding:40px;color:var(--muted);font-size:14px;">
-          📭 ยังไม่มีรายการยืม
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- ALL MODALS BELOW -->
 
-  <!-- PRINT ZONE -->
   <div id="print-zone">
     <div class="print-doc" id="print-doc"></div>
   </div>
 
-  <!-- PHOTO MODAL -->
-  <div class="modal-overlay" id="photo-modal">
-    <div class="modal">
-      <div class="modal-header">
-        <h3>📸 รูปหลักฐาน</h3>
-        <button class="btn-close" onclick="closeModal('photo-modal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <img id="photo-modal-img" src="" alt="หลักฐาน">
-      </div>
-    </div>
-  </div>
-
-  <!-- RETURN MODAL WITH PHOTO -->
+  <!-- RETURN MODAL -->
   <div class="modal-overlay" id="return-modal">
     <div class="modal">
       <div class="modal-header">
-        <h3>📥 คืนวิทยุ - ถ่ายภาพหลักฐาน</h3>
-        <button class="btn-close" onclick="closeModal('return-modal')">✕</button>
+        <h3>📥 ยืนยันการคืนวิทยุสื่อสาร</h3>
+        <button class="btn-close" onclick="app ? app.closeModal('return-modal') : closeModal('return-modal')">✕</button>
       </div>
       <div class="modal-body">
-        <div id="return-info" style="margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;">
-          <!-- Return info will be inserted here -->
+        <div id="return-info"
+          style="margin-bottom:20px; padding:16px; background:#f8fafc; border:1px solid var(--border); border-radius:16px;">
+          <!-- Return Info Inserted via JS -->
         </div>
 
         <div class="photo-capture-container">
-          <div id="return-photo-display-card" class="return-photo-display-card photo-display-card"
-            style="position: relative;">
-            <!-- Native Camera Capture -->
+          <div id="return-photo-display-card" class="photo-display-card">
             <input type="file" accept="image/*" capture="environment" onchange="app.handleReturnPhotoUpload(this)"
-              style="position:absolute; inset:0; opacity:0; cursor:pointer; z-index:10;">
-
-            <div id="return-photo-empty-state">
+              style="position:absolute; inset:0; opacity:0; cursor:pointer; z-index:10; width:100%; height:100%;">
+            <div id="return-photo-empty-state" style="text-align:center; pointer-events:none;">
               <div class="icon">📸</div>
-              <p>ถ่ายภาพหลักฐานคนคืน</p>
-              <span class="btn-tiny">แตะเพื่อถ่ายรูป</span>
+              <p>ถ่ายรูปผู้ทำรายการคืน</p>
+              <div
+                style="display:inline-block; margin-top:12px; background:rgba(79,70,229,0.1); color:var(--primary); padding:6px 16px; border-radius:20px; font-size:12px; font-weight:700;">
+                แตะเพื่อถ่ายรูปกล้องมือถือ</div>
             </div>
             <img id="return-photo-preview" src="" alt="Evidence">
           </div>
 
           <div class="photo-actions-row">
-            <button class="btn-action-small" onclick="document.getElementById('return-photo-upload').click()">
-              📁 อัปโหลด
-            </button>
-            <button class="btn-action-small" id="btn-retake-return" style="display:none"
-              onclick="app.openCameraModal('return')">
-              🔄 ถ่ายใหม่
-            </button>
+            <button class="btn-action-small" onclick="document.getElementById('return-photo-upload').click()">📂
+              อัปโหลด</button>
+            <button class="btn-action-small" id="btn-retake-return"
+              style="display:none; border-color:var(--danger); color:var(--danger);"
+              onclick="app.openCameraModal('return')">🔄 กล้องระบบ</button>
           </div>
         </div>
 
@@ -314,78 +329,81 @@
         <canvas id="return-photo-canvas" style="display:none;"></canvas>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeModal('return-modal')">ยกเลิก</button>
-        <button class="btn btn-primary" onclick="app.confirmReturn()">✅ ยืนยันการคืน</button>
+        <button class="btn btn-secondary" style="width:auto; padding:12px 24px;"
+          onclick="app ? app.closeModal('return-modal') : closeModal('return-modal')">ยกเลิก</button>
+        <button class="btn btn-primary" style="width:auto; padding:12px 24px; min-width:140px;"
+          onclick="app.confirmReturn()">✅ ยืนยันการคืน</button>
       </div>
     </div>
   </div>
 
   <!-- QR SCANNER MODAL -->
   <div class="modal-overlay" id="qr-modal">
-    <div class="modal qr-modal-content">
-      <div class="modal-header">
-        <h3>📷 สแกน QR Code วิทยุ</h3>
-        <button class="btn-close" onclick="app.closeQRModal()">✕</button>
+    <div class="modal" style="max-width:400px; padding:0; overflow:hidden;">
+      <div class="modal-header" style="background:#0f172a; color:#fff; border-bottom:1px solid #1e293b;">
+        <h3 style="color:#fff;">📷 สแกน QR ตัวเครื่อง</h3>
+        <button class="btn-close" style="background:rgba(255,255,255,0.1); color:#fff;"
+          onclick="app.closeQRModal()">✕</button>
       </div>
-      <div class="modal-body" style="padding:0; background:#000; position:relative;">
+      <div class="modal-body" style="padding:0; background:#000; position:relative; min-height:300px;">
         <div id="qr-reader-modal" style="width:100%;"></div>
         <div class="qr-scanner-overlay">
           <div class="scanner-line"></div>
         </div>
       </div>
-      <div class="modal-footer" style="flex-direction:column; gap:10px; padding:20px;">
-        <button class="btn btn-primary" onclick="document.getElementById('qr-file-input').click()"
-          style="background:var(--accent); font-size:14px;">
-          📁 เลือกรูปหรือถ่ายภาพสแกน
-        </button>
+      <div class="modal-footer"
+        style="flex-direction:column; gap:12px; padding:24px; background:#0f172a; border-top:1px solid #1e293b;">
+        <button class="btn"
+          style="background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2);"
+          onclick="document.getElementById('qr-file-input').click()">📁 เลือกรูปภาพจากเครื่องแทน</button>
         <input type="file" id="qr-file-input" accept="image/*" capture="environment" style="display:none"
           onchange="app.handleQRFileUpload(this)">
-        <button class="btn btn-secondary" onclick="app.closeQRModal()"
-          style="width:100%; margin:0; font-size:13px;">ยกเลิก</button>
       </div>
     </div>
   </div>
-  <!-- CAMERA CAPTURE MODAL -->
+
+  <!-- CAMERA CAPTURE MODAL OVERRIDE -->
   <div class="modal-overlay" id="camera-modal">
-    <div class="modal camera-modal-content">
-      <div class="modal-header">
-        <h3>📸 ถ่ายภาพหลักฐาน</h3>
-        <button class="btn-close" onclick="app.closeCameraModal()">✕</button>
+    <div class="modal camera-modal-content"
+      style="background:#000; border-radius:0; width:100%; max-width:100%; height:100%; max-height:100vh;">
+      <div class="modal-header" style="background:#000; color:#fff; border:none; padding:24px;">
+        <h3 style="color:#fff;">📸 กล้องถ่ายภาพถ่ายหลักฐาน</h3>
+        <button class="btn-close" style="background:rgba(255,255,255,0.2); color:#fff;"
+          onclick="app.closeCameraModal()">✕</button>
       </div>
-      <div class="modal-body viewfinder-container">
+      <div class="modal-body viewfinder-container" style="padding:0;">
         <video id="main-viewfinder" autoplay playsinline></video>
-        <div class="camera-ui-overlay">
-          <div class="guide-box"></div>
-        </div>
       </div>
-      <div class="modal-footer camera-footer">
-        <button class="btn-round" onclick="app.toggleCamera()" title="สลับกล้อง">🔄</button>
+      <div class="modal-footer"
+        style="background:#000; border:none; padding:32px; display:flex; justify-content:space-evenly; align-items:center;">
+        <button class="btn-round" onclick="app.toggleCamera()">🔄</button>
         <button class="btn-snap-large" onclick="app.handleCameraAction()"></button>
-        <button class="btn-round" onclick="app.closeCameraModal()" title="ยกเลิก">✕</button>
+        <button class="btn-round" onclick="app.closeCameraModal()">✕</button>
       </div>
     </div>
   </div>
 
   <!-- PHOTO VIEWER MODAL -->
   <div class="modal-overlay" id="photo-modal">
-    <div class="modal photo-modal-content">
+    <div class="modal">
       <div class="modal-header">
-        <h3 id="photo-modal-title">🖼️ ดูรูปภาพหลักฐาน</h3>
-        <button class="btn-close" onclick="app.closeModal('photo-modal')">✕</button>
+        <h3 id="photo-modal-title">🖼️ ดูรูปภาพหลัดฐาน</h3>
+        <button class="btn-close" onclick="app ? app.closeModal('photo-modal') : closeModal('photo-modal')">✕</button>
       </div>
-      <div class="modal-body" style="padding:0; background:#000; text-align:center; overflow:hidden;">
-        <img id="photo-modal-img" src="" style="max-width:100%; max-height:70vh; object-fit:contain; display:block; margin:0 auto;">
+      <div class="modal-body" style="padding:0; background:#f8fafc; text-align:center;">
+        <img id="photo-modal-img" src=""
+          style="max-width:100%; max-height:70vh; object-fit:contain; display:block; margin:0 auto; padding:16px;">
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="app.closeModal('photo-modal')">ปิด</button>
-        <a id="photo-modal-link" href="#" target="_blank" class="btn btn-primary" style="text-decoration:none; display:inline-block; width:auto;">🔗 เปิดไฟล์จริง</a>
+        <a id="photo-modal-link" href="#" target="_blank" class="btn btn-primary"
+          style="width:auto; padding:12px 24px; text-decoration:none;">🔗 เปิดไฟล์เต็มๆ</a>
       </div>
     </div>
   </div>
 
   <div id="toast" class="toast"></div>
 
-  <!-- Load scripts in correct order -->
+  <!-- SCRIPTS -->
   <script src="js/config.js"></script>
   <script src="js/radios.js"></script>
   <script src="js/users.js"></script>

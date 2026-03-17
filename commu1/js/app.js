@@ -99,8 +99,15 @@ class RadioBorrowSystem {
     try {
       const records = await this.sheetsAPI.fetchData();
 
-      // Sort immediately after fetching: latest first
-      records.sort((a, b) => new Date(b.borrowTime) - new Date(a.borrowTime));
+      // เรียงลำดับรายการล่าสุดขึ้นก่อน (เปรียบเทียบจากเวลา และถ้าเวลาเท่ากันให้ดูจาก ID)
+      records.sort((a, b) => {
+        const timeA = new Date(a.borrowTime || 0).getTime();
+        const timeB = new Date(b.borrowTime || 0).getTime();
+        if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+          return timeB - timeA;
+        }
+        return (b.id || 0) - (a.id || 0);
+      });
 
       this.records = records;
       this.borrowed = new Set(records.filter(r => r.status === 'borrowed').map(r => r.radioId));
@@ -206,7 +213,11 @@ class RadioBorrowSystem {
       const isSelected = this.selectedRadios.has(id);
       const btn = document.createElement('button');
       btn.className = 'radio-btn ' + (isBorrowed ? 'borrowed' : isSelected ? 'selected' : 'available');
-      btn.textContent = String(i).padStart(2, '0');
+      
+      const snLast4 = (radioInfo && radioInfo.sn) ? radioInfo.sn.slice(-4) : '';
+      btn.innerHTML = `<div style="line-height:1;">${String(i).padStart(2, '0')}</div>` + 
+                     (snLast4 ? `<div style="font-size:10px; font-weight:500; opacity:0.7; margin-top:4px;">${snLast4}</div>` : '');
+      
       btn.title = radioInfo ? `SN: ${radioInfo.sn} (${radioInfo.model})` : `Radio ${id}`;
       if (!isBorrowed) btn.onclick = () => this.selectRadio(id);
       grid.appendChild(btn);
@@ -493,13 +504,14 @@ class RadioBorrowSystem {
   handleCameraAction() {
     const video = document.getElementById('main-viewfinder');
     const canvas = document.createElement('canvas');
-    // ลดขนาดรูปลงมากๆ เพื่อให้ข้อความสั้นพอที่จะเซฟลง Google Sheets แบบชิลๆ
-    const targetWidth = 150;
+    // ปรับความละเอียดเป็นระดับ HD (1024px) เพื่อความคมชัดสูงสุด
+    const targetWidth = 1024;
     const targetHeight = (video.videoHeight / video.videoWidth) * targetWidth;
     canvas.width = targetWidth;
     canvas.height = targetHeight;
     canvas.getContext('2d').drawImage(video, 0, 0, targetWidth, targetHeight);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.15); // ลดความชัดลงอีกให้โค้ดสั้นที่สุด
+    // เพิ่มคุณภาพเป็น 0.8 (ชัดเจนมาก)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
 
     if (this.cameraContext === 'borrow') {
       this.photoDataUrl = dataUrl;
@@ -805,21 +817,37 @@ class RadioBorrowSystem {
       el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:30px;font-size:13px;">ไม่มีรายการยืมที่ตรงเงื่อนไข</div>';
       return;
     }
-    el.innerHTML = active.map(r => `
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
-            <span class="radio-tag">${r.radioId}</span>
-            <span style="font-size:14px;font-weight:700;">${r.name}</span>
+    el.innerHTML = active.map(r => {
+      // เตรียม URL รูปย่อ (รองรับทั้ง Drive และ Base64)
+      let thumbSrc = 'images/TACCOM46.PNG'; // Fallback
+      if (r.photo) {
+        if (r.photo.includes('drive.google.com')) {
+          const fileId = r.photo.match(/[-\w]{25,}/);
+          if (fileId) thumbSrc = `https://drive.google.com/thumbnail?id=${fileId[0]}&sz=w200`;
+        } else if (r.photo.startsWith('data:image')) {
+          thumbSrc = r.photo;
+        }
+      }
+
+      return `
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex; gap:12px; align-items:center;">
+            <img class="return-list-img" src="${thumbSrc}" onerror="this.src='https://placehold.co/60x60?text=IMG'">
+            <div>
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+                <span class="radio-tag">${r.radioId}</span>
+                <span style="font-size:14px;font-weight:700;">${r.name}</span>
+              </div>
+              <div style="font-size:12px;color:var(--muted);">📞 ${r.phone} &nbsp; ⏰ ${this.formatTime(r.borrowTime)}</div>
+            </div>
           </div>
-          <div style="font-size:12px;color:var(--muted);">📞 ${r.phone} &nbsp; ⏰ ${this.formatTime(r.borrowTime)}</div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-return" onclick="app.returnRadio(${r.id})">คืน</button>
+            <button class="btn-print-row" onclick="app.printRecord(${r.id})">🖨</button>
+          </div>
         </div>
-        <div style="display:flex;gap:6px;">
-          <button class="btn-return" onclick="app.returnRadio(${r.id})">คืน</button>
-          <button class="btn-print-row" onclick="app.printRecord(${r.id})">🖨</button>
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   // =================== TABLE ===================
@@ -834,8 +862,15 @@ class RadioBorrowSystem {
       (r.dept || '').toLowerCase().includes(q)
     );
 
-    // Ensure they are sorted: latest borrowTime first
-    filtered.sort((a, b) => new Date(b.borrowTime) - new Date(a.borrowTime));
+    // เรียงลำดับรายการล่าสุดขึ้นก่อนเสมอ
+    filtered.sort((a, b) => {
+      const timeA = new Date(a.borrowTime || 0).getTime();
+      const timeB = new Date(b.borrowTime || 0).getTime();
+      if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+        return timeB - timeA;
+      }
+      return (b.id || 0) - (a.id || 0);
+    });
     const tbody = document.getElementById('records-body');
     const empty = document.getElementById('empty-state');
     if (filtered.length === 0) {
@@ -844,38 +879,47 @@ class RadioBorrowSystem {
       return;
     }
     empty.style.display = 'none';
-    tbody.innerHTML = filtered.map((r, i) => `
+    tbody.innerHTML = filtered.map((r, i) => {
+      const statusBadge = r.status === 'borrowed'
+        ? '<span class="badge badge-yellow">⏳ ยืมอยู่</span>'
+        : '<span class="badge badge-green">✓ คืนแล้ว</span>';
+      const actionBtn = r.status === 'borrowed'
+        ? `<button class="btn-return" onclick="app.returnRadio(${r.id})">คืน</button>`
+        : '';
+      return `
       <tr>
-        <td class="time-mono">${i + 1}</td>
-      <td class="time-mono" style="white-space:nowrap; font-size:12px;">
-        <span class="radio-tag">#${r.radioId.padStart(2, '0')}</span>
-        <span style="color: #475569; margin-left:8px;">${r.radioSN || '—'}</span>
-        <span style="color: #94a3b8; margin-left:4px;">(${r.radioModel || '—'})</span>
-      </td>
-      <td style="font-weight:700; color: var(--accent); white-space:nowrap;">${r.name}</td>
-      <td style="white-space:nowrap;">
-        <span class="time-mono" style="color: #334155;">${r.phone}</span>
-        <span style="color: #64748b; font-size:12px; margin-left:6px;">(${r.dept || '—'})</span>
-      </td>
-      <td class="time-mono" style="font-size:12px; color: #475569;">${this.formatTime(r.borrowTime)}</td>
-      <td class="time-mono" style="font-size:12px; color: #475569;">${r.returnTime ? this.formatTime(r.returnTime) : '—'}</td>
-        <td>${this.renderPhotoCell(r.photo, 'viewPhoto', r.id)}</td>
-        <td style="white-space:nowrap;">
-          <div style="display:inline-flex; align-items:center; gap:8px;">
+        <td style="font-size:12px; color:var(--text-muted); font-family:var(--font-mono); min-width:36px; text-align:center;">${i + 1}</td>
+        <td style="min-width:110px;">
+          <div style="margin-bottom:4px;">
+            <span class="radio-tag">#${r.radioId.padStart(2, '0')}</span>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted);">${r.radioModel || '—'}${r.radioSN ? ' · ' + r.radioSN : ''}</div>
+        </td>
+        <td style="min-width:80px;">
+          ${statusBadge}
+        </td>
+        <td style="min-width:130px;">
+          <div style="font-weight:700; color:var(--text-main);">${r.name}</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${r.phone}${r.dept ? ' · ' + r.dept : ''}</div>
+        </td>
+        <td style="min-width:110px;">
+          <div style="font-size:12px; color:var(--text-main); font-family:var(--font-mono);">${this.formatTime(r.borrowTime)}</div>
+          ${r.returnTime ? `<div style="font-size:11px; color:var(--success); margin-top:2px;">${this.formatTime(r.returnTime)}</div>` : ''}
+        </td>
+        <td style="min-width:60px;">${this.renderPhotoCell(r.photo, 'viewPhoto', r.id)}</td>
+        <td style="min-width:60px;">
+          <div style="display:flex; align-items:center; justify-content:center;">
             ${this.renderPhotoCell(r.returnPhoto, 'viewReturnPhoto', r.id)}
-            ${r.status === 'borrowed' ?
-        '<span class="badge badge-yellow" style="font-size:10px; padding:2px 6px;">⏳ ยืมอยู่</span>' :
-        '<span class="badge badge-green" style="font-size:10px; padding:2px 6px;">✓ คืนแล้ว</span>'}
           </div>
         </td>
-        <td>
-          <div style="display:flex;gap:4px;">
-            ${r.status === 'borrowed' ? `<button class="btn-return" onclick="app.returnRadio(${r.id})">คืน</button>` : ''}
+        <td style="min-width:60px;">
+          <div style="display:flex; gap:4px; align-items:center;">
+            ${actionBtn}
             <button class="btn-print-row" onclick="app.printRecord(${r.id})">🖨️</button>
           </div>
         </td>
-      </tr>
-    `).join('');
+      </tr>`;
+    }).join('');
   }
 
   // =================== STATS ===================
@@ -920,7 +964,7 @@ class RadioBorrowSystem {
   }
 
   // =================== PHOTO HELPERS ===================
-  async resizeImage(base64Str, maxWidth = 300, maxQuality = 0.25) {
+  async resizeImage(base64Str, maxWidth = 1024, maxQuality = 0.8) {
     return new Promise((resolve) => {
       const img = new Image();
       img.src = base64Str;
