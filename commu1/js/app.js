@@ -24,7 +24,7 @@ class RadioBorrowSystem {
     }
 
     this.authorized_emails = [
-      'nuttapop14@gmail.com', 'khunchaiboy461@gmail.com',
+      'nuttapop14@gmail.com', 'khunchaiboy461@gmail.com','chakkwatr020@gmail.com',
       // Add more authorized emails here
     ];
 
